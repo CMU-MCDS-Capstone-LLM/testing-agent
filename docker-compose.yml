@@ -1,0 +1,14 @@
+services:
+  testing-agent:
+    build:
+      context: ./testing-agent
+    image: testing-agent:latest
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PROJECT_ROOT=/workspace/keep2roam
+      - TEST_COMMAND_DIR=/workspace/keep2roam/tests
+      - CODE_COVERAGE_REPORT_PATH=/workspace/keep2roam/tests/coverage.xml
+      - TEST_REQUIREMENTS_FILE=/workspace/keep2roam/requirements.txt
+    volumes:
+      - ./workspace:/workspace
+    working_dir: /app     # <-- key change (or remove this line)
