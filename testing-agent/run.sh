@@ -12,7 +12,14 @@ else
     exit 1
 fi
 
-# --- 1. Export API Keys ---
+# --- 1. Clean up any stale flags ---
+TESTING_COMPLETE_FLAG="/workspace/${REPO_NAME}/testing_complete.flag"
+if [ -f "$TESTING_COMPLETE_FLAG" ]; then
+    echo "DEBUG: Removing stale testing completion flag..."
+    rm -f "$TESTING_COMPLETE_FLAG"
+fi
+
+# --- 2. Export API Keys ---
 export OPENAI_API_KEY
 # Only export LITELLM_API_KEY if it's defined
 # if [ ! -z "$LITELLM_API_KEY" ]; then
@@ -22,23 +29,69 @@ echo "API keys exported."
 
 # --- 2. Install Dependencies ---
 # Install packages in the current environment.
-# --- 2. Install Dependencies ---
-if [ -n "${TEST_REQUIREMENTS_FILE:-}" ] && [ -f "$TEST_REQUIREMENTS_FILE" ]; then
-    echo "Installing dependencies from $TEST_REQUIREMENTS_FILE..."
-    pip install --no-cache-dir -r "$TEST_REQUIREMENTS_FILE"
-elif [ -n "${PROJECT_ROOT:-}" ] && [ -f "$PROJECT_ROOT/requirements.txt" ]; then
-    echo "Installing dependencies from $PROJECT_ROOT/requirements.txt..."
-    pip install --no-cache-dir -r "$PROJECT_ROOT/requirements.txt"
-else
-    echo "No requirements file found (TEST_REQUIREMENTS_FILE or PROJECT_ROOT/requirements.txt). Skipping dependency install."
+# Install repo requirements first, then reinstall testing requirements to ensure compatibility
+REQUIREMENTS_FOUND=0
+if [ -n "${PROJECT_ROOT:-}" ]; then
+    # Try setup.py first (includes install_requires dependencies)
+    if [ -f "$PROJECT_ROOT/setup.py" ]; then
+        echo "Found setup.py, installing package with dependencies..."
+        (cd "$PROJECT_ROOT" && pip install -e . 2>&1)
+        if [ $? -eq 0 ]; then
+            echo "Successfully installed package from setup.py"
+        else
+            echo "Warning: setup.py installation had issues, but continuing..."
+        fi
+        REQUIREMENTS_FOUND=1
+    fi
+    
+    # Try pyproject.toml 
+    if [ -f "$PROJECT_ROOT/pyproject.toml" ] && [ $REQUIREMENTS_FOUND -eq 0 ]; then
+        echo "Found pyproject.toml, installing package with dependencies..."
+        (cd "$PROJECT_ROOT" && pip install -e .) 2>&1 | tail -1
+        REQUIREMENTS_FOUND=1
+    fi
+    
+    # Try requirements.txt files
+    for REQ_FILE in "$PROJECT_ROOT/requirements.txt" "$PROJECT_ROOT/requirements/base.txt" "$PROJECT_ROOT/requirements/dev.txt"; do
+        if [ -f "$REQ_FILE" ]; then
+            echo "Installing dependencies from $REQ_FILE..."
+            pip install --no-cache-dir -r "$REQ_FILE" > /dev/null 2>&1 || true
+            REQUIREMENTS_FOUND=1
+        fi
+    done
+    
+    # Try Pipfile (using pipenv)
+    if [ -f "$PROJECT_ROOT/Pipfile" ]; then
+        echo "Found Pipfile, installing dependencies..."
+        pip install --no-cache-dir pipenv > /dev/null 2>&1 || true
+        (cd "$PROJECT_ROOT" && pipenv install --system --skip-lock) > /dev/null 2>&1 || true
+        REQUIREMENTS_FOUND=1
+    fi
+    
+    if [ $REQUIREMENTS_FOUND -eq 0 ]; then
+        echo "Warning: No dependency files found."
+    fi
 fi
+
+# Always reinstall testing requirements last to ensure wandb/urllib3 compatibility
+pip install --force-reinstall --no-cache-dir urllib3==1.26.20 wandb>=0.16.0 > /dev/null 2>&1 || true
 
 
 # --- 3. Create Test Folder and File & Run Coverage Analysis ---
 echo "Setting up test environment in $PROJECT_ROOT"
 
-# Clear the output file before appending
-> "$OUTPUT_FILE"
+# Remove stale flags from previous runs (volume persists across runs)
+READY_FILE="$PROJECT_ROOT/test_ready.flag"
+[ -f "$READY_FILE" ] && echo "DEBUG: Removing stale ready flag at '$READY_FILE'" && rm -f "$READY_FILE"
+
+# Also remove the testing_complete.flag from previous runs
+TESTING_COMPLETE_FLAG="$PROJECT_ROOT/testing_complete.flag"
+[ -f "$TESTING_COMPLETE_FLAG" ] && echo "DEBUG: Removing stale testing_complete flag at '$TESTING_COMPLETE_FLAG'" && rm -f "$TESTING_COMPLETE_FLAG"
+
+# Ensure tests dir exists before touching output file
+mkdir -p "$TEST_COMMAND_DIR"
+# Clear the output file before appending (create if missing)
+: > "$OUTPUT_FILE"
 
 # (a) Create tests folder if it does not exist
 if [ ! -d "$TEST_COMMAND_DIR" ]; then
@@ -47,6 +100,10 @@ if [ ! -d "$TEST_COMMAND_DIR" ]; then
 else
     echo "Tests folder exists: $TEST_COMMAND_DIR"
 fi
+
+# Defer readiness signal until after tests are generated and processing completes
+READY_FILE="$PROJECT_ROOT/test_ready.flag"
+echo "DEBUG: PROJECT_ROOT='$PROJECT_ROOT'"
 
 # (b) Ensure tests/conftest.py exists to patch sys.path
 CONFTEST="$TEST_COMMAND_DIR/conftest.py"
@@ -71,7 +128,7 @@ PYTHON_FILES=$(find "$PROJECT_ROOT" -name "*.py" -not -path "*/\.*" -not -path "
 echo "Found $(echo "$PYTHON_FILES" | wc -l) Python files to process"
 
 # Process each Python file
-echo "$PYTHON_FILES" | while read -r SOURCE_PATH; do
+while read -r SOURCE_PATH; do
     if [ -z "$SOURCE_PATH" ]; then
         continue
     fi
@@ -120,7 +177,8 @@ def test_dummy():
     assert True  # dummy test - placeholder for future tests
 EOF
 
-        PKG_NAME="$(basename "$PROJECT_ROOT")"
+        # Detect the actual Python package name by finding the first package directory
+        PKG_NAME=$(find "$PROJECT_ROOT" -maxdepth 2 -type f -name "__init__.py" ! -path "*/test*" ! -path "*/.*" -exec dirname {} \; | head -1 | xargs basename 2>/dev/null || basename "$PROJECT_ROOT" | tr '-' '_')
         IMPORT_BLOCK=$(
 python - "$SOURCE_PATH" "$PKG_NAME" <<'PY'
 import ast, sys, pathlib, re
@@ -183,8 +241,10 @@ PY
     echo "======================================" >> "$OUTPUT_FILE"
     
     # Run cover-agent with parameters from config.sh
+    echo "DEBUG: OPENAI_API_KEY is set to: $OPENAI_API_KEY" >> "$OUTPUT_FILE"
+    echo "DEBUG: GITHUB_TOKEN is set to: $GITHUB_TOKEN" >> "$OUTPUT_FILE"
 
-    python -m cover_agent.main \
+    OPENAI_API_KEY="$OPENAI_API_KEY" GITHUB_TOKEN="$GITHUB_TOKEN" python /app/cover_agent/main.py \
         --source-file-path "$SOURCE_PATH" \
         --test-file-path "$TEST_FILE" \
         --project-root "$PROJECT_ROOT" \
@@ -194,7 +254,9 @@ PY
         --coverage-type "$COVERAGE_TYPE" \
         --desired-coverage "$DESIRED_COVERAGE" \
         --max-iterations "$MAX_ITERATIONS" \
-        --additional-instructions "$ADDITIONAL_INSTRUCTIONS" >> "$OUTPUT_FILE" 2>&1
+        --additional-instructions "$ADDITIONAL_INSTRUCTIONS" \
+        --model "openai/gpt-4o" \
+        --api-base "https://cmu.litellm.ai" >> "$OUTPUT_FILE" 2>&1
 
     RESULT=$?
     if [ $RESULT -eq 0 ]; then
@@ -206,6 +268,30 @@ PY
     echo "" >> "$OUTPUT_FILE"
     echo "--------------------------------------" >> "$OUTPUT_FILE"
     echo "" >> "$OUTPUT_FILE"
-done
+done <<< "$PYTHON_FILES"
 
 echo "All cover-agent tasks completed. Full output is available in $OUTPUT_FILE"
+
+echo "All tests generated and processed successfully"
+
+# Create the completion flag that the healthcheck is waiting for
+# Only derive REPO_NAME from GITHUB_URL if not in LOCAL_REPO_MODE (where it's already set)
+if [ "${LOCAL_REPO_MODE:-}" != "1" ]; then
+    REPO_PATH=$(echo "$GITHUB_URL" | sed 's|.*github.com/||' | sed 's|\.git$||')
+    ORG=${REPO_PATH%%/*}
+    REPO=${REPO_PATH##*/}
+    REPO_NAME="${ORG}__${REPO}"
+fi
+
+TESTING_COMPLETE_FLAG="/workspace/${REPO_NAME}/testing_complete.flag"
+
+echo "Creating testing completion flag: $TESTING_COMPLETE_FLAG"
+echo "DEBUG: REPO_NAME=$REPO_NAME"
+echo "DEBUG: TESTING_COMPLETE_FLAG=$TESTING_COMPLETE_FLAG"
+
+# Ensure the directory exists
+mkdir -p "/workspace/${REPO_NAME}"
+touch "$TESTING_COMPLETE_FLAG"
+echo "Testing completion flag created successfully"
+ls -la "$TESTING_COMPLETE_FLAG"
+echo "Testing agent setup complete - worker can now start"

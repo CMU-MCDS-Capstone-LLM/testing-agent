@@ -89,7 +89,7 @@ def parse_args():
     )
     parser.add_argument(
         "--api-base",
-        default="http://localhost:11434",
+        default="https://cmu.litellm.ai",
         help="The API url to use for Ollama or Hugging Face. Default: %(default)s.",
     )
     parser.add_argument(
