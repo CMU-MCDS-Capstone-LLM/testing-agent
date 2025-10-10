@@ -1,6 +1,10 @@
+import ast
 import json
 import os
-
+import re
+#{
+from typing import Set
+#}
 from cover_agent.CustomLogger import CustomLogger
 from cover_agent.FilePreprocessor import FilePreprocessor
 from cover_agent.AgentCompletionABC import AgentCompletionABC
@@ -81,6 +85,12 @@ class UnitTestGenerator:
 
         with open(self.test_file_path, "r") as f:
             self.test_code = f.read()
+        #{
+        # Cache symbols defined in the source file so we can auto-import them if needed
+        self.source_defined_symbols = self._extract_source_defined_symbols(
+            self.source_code
+        )
+        #}
 
     def get_code_language(self, source_file_path):
         """
@@ -116,7 +126,143 @@ class UnitTestGenerator:
 
         # Return the language name in lowercase
         return language_name.lower()
+    #{
+    @staticmethod
+    def _extract_source_defined_symbols(source_code: str) -> Set[str]:
+        symbols: Set[str] = set()
+        try:
+            tree = ast.parse(source_code)
+        except SyntaxError:
+            return symbols
 
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                symbols.add(node.name)
+        return symbols
+
+    @staticmethod
+    def _extract_imported_symbols(code_snippet: str) -> Set[str]:
+        imported: Set[str] = set()
+        if not code_snippet:
+            return imported
+        try:
+            tree = ast.parse(code_snippet, type_comments=True)
+        except SyntaxError:
+            return imported
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    imported.add(alias.asname or alias.name.split(".")[0])
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    imported.add(alias.asname or alias.name.split(".")[0])
+        return imported
+
+    @staticmethod
+    def _extract_local_symbol_names(code_snippet: str) -> Set[str]:
+        locals_set: Set[str] = set()
+        if not code_snippet:
+            return locals_set
+        try:
+            tree = ast.parse(code_snippet)
+        except SyntaxError:
+            return locals_set
+
+        built_locals = set()
+
+        class LocalVisitor(ast.NodeVisitor):
+            def visit_FunctionDef(self, node):
+                locals_set.add(node.name)
+                for arg in (
+                    list(node.args.args)
+                    + list(node.args.posonlyargs)
+                    + list(node.args.kwonlyargs)
+                ):
+                    locals_set.add(arg.arg)
+                if node.args.vararg:
+                    locals_set.add(node.args.vararg.arg)
+                if node.args.kwarg:
+                    locals_set.add(node.args.kwarg.arg)
+                self.generic_visit(node)
+
+            visit_AsyncFunctionDef = visit_FunctionDef
+
+            def visit_With(self, node):
+                for item in node.items:
+                    if item.optional_vars and isinstance(item.optional_vars, ast.Name):
+                        locals_set.add(item.optional_vars.id)
+                self.generic_visit(node)
+
+            def visit_For(self, node):
+                targets = []
+                if isinstance(node.target, ast.Name):
+                    targets.append(node.target.id)
+                elif isinstance(node.target, (ast.Tuple, ast.List)):
+                    targets.extend(
+                        name.id
+                        for name in node.target.elts
+                        if isinstance(name, ast.Name)
+                    )
+                locals_set.update(targets)
+                self.generic_visit(node)
+
+        LocalVisitor().visit(tree)
+
+        locals_set.update(built_locals)
+        return locals_set
+
+    def _extract_called_source_names(self, code_snippet: str) -> Set[str]:
+        names: Set[str] = set()
+        if not code_snippet:
+            return names
+        try:
+            tree = ast.parse(code_snippet)
+        except SyntaxError:
+            return names
+
+        local_names = self._extract_local_symbol_names(code_snippet)
+        builtin_names = set(dir(__builtins__))
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                func = node.func
+                if isinstance(func, ast.Name):
+                    candidate = func.id
+                    if (
+                        candidate in self.source_defined_symbols
+                        and candidate not in local_names
+                        and candidate not in builtin_names
+                    ):
+                        names.add(candidate)
+        return names
+
+    @staticmethod
+    def _merge_import_lines(existing_code: str, new_lines: Set[str]) -> str:
+        lines = []
+        seen = set()
+        for block in [existing_code] if existing_code else []:
+            for line in block.split("\n"):
+                stripped = line.strip()
+                if stripped and stripped not in seen:
+                    lines.append(stripped)
+                    seen.add(stripped)
+        for line in sorted(new_lines):
+            stripped = line.strip()
+            if stripped and stripped not in seen:
+                lines.append(stripped)
+                seen.add(stripped)
+        return "\n".join(lines)
+
+    def _infer_source_module_name(self) -> str:
+        if self.project_root:
+            rel_path = os.path.relpath(self.source_file_path, self.project_root)
+        else:
+            rel_path = os.path.basename(self.source_file_path)
+        module, _ = os.path.splitext(rel_path)
+        module = module.replace(os.sep, ".")
+        return module
+    #}
     def check_for_failed_test_runs(self, failed_test_runs):
         """
         Processes the failed test runs and returns a formatted string with details of the failed tests.
@@ -216,5 +362,242 @@ class UnitTestGenerator:
             }
             # self.failed_test_runs.append(fail_details)
             tests_dict = []
+        #{
+        module_import_path = self._infer_source_module_name()
+        module_alias = module_import_path.split(".")[-1]
+        module_alias_name = f"{module_alias}_module"
+        existing_imported_symbols = self._extract_imported_symbols(self.test_code)
 
+        if isinstance(tests_dict, dict):
+            candidate_tests = tests_dict.get("new_tests", [])
+        else:
+            candidate_tests = tests_dict
+
+        for generated_test in candidate_tests or []:
+            test_code_snippet = generated_test.get("test_code", "")
+            if not test_code_snippet:
+                continue
+
+            test_code_snippet = self._simplify_path_dunder_str_mock(
+                test_code_snippet
+            )
+            generated_test["test_code"] = test_code_snippet
+
+            (
+                test_code_snippet,
+                alias_needed,
+            ) = self._qualify_source_references_with_module_alias(
+                test_code_snippet=test_code_snippet,
+                module_name=module_alias,
+                alias_name=module_alias_name,
+            )
+
+            if alias_needed and module_alias_name not in existing_imported_symbols:
+                alias_import_line = f"import {module_import_path} as {module_alias_name}"
+                generated_test["new_imports_code"] = self._merge_import_lines(
+                    generated_test.get("new_imports_code", ""),
+                    {alias_import_line},
+                )
+                existing_imported_symbols.add(module_alias_name)
+
+            if alias_needed:
+                generated_test["test_code"] = test_code_snippet
+
+            referenced_symbols = self._extract_called_source_names(test_code_snippet)
+            if not referenced_symbols:
+                continue
+
+            current_imports = existing_imported_symbols.union(
+                self._extract_imported_symbols(
+                    generated_test.get("new_imports_code", "")
+                ),
+                self._extract_local_symbol_names(test_code_snippet),
+            )
+
+            missing_symbols = {
+                symbol for symbol in referenced_symbols if symbol not in current_imports
+            }
+
+            if not missing_symbols:
+                continue
+
+            import_lines = {
+                f"from {module_import_path} import {symbol}"
+                for symbol in missing_symbols
+            }
+
+            generated_test["new_imports_code"] = self._merge_import_lines(
+                generated_test.get("new_imports_code", ""), import_lines
+            )
+
+            existing_imported_symbols.update(missing_symbols)
+        #}
         return tests_dict
+
+    @staticmethod
+    def _simplify_path_dunder_str_mock(test_code_snippet: str) -> str:
+        """Replace fragile `__str__` mocking on `Path` specs with concrete paths."""
+        lines = test_code_snippet.splitlines()
+        if not lines:
+            return test_code_snippet
+
+        assignment_regex = re.compile(
+            r"^(?P<indent>\s*)(?P<var>[A-Za-z_][\w]*)\s*=\s*mocker\.Mock\(\s*spec\s*=\s*Path\s*\)"
+        )
+        skip_indices: set[int] = set()
+        replacements: dict[int, str] = {}
+
+        added_open_patch = "builtins.open" in test_code_snippet
+
+        for idx, line in enumerate(lines):
+            if idx in skip_indices:
+                continue
+
+            match = assignment_regex.match(line)
+            if not match:
+                continue
+
+            var_name = match.group("var")
+            indent = match.group("indent")
+
+            # Look for a subsequent __str__ mock
+            str_idx = None
+            for search_idx in range(idx + 1, len(lines)):
+                candidate_line = lines[search_idx]
+                if f"{var_name}.__str__" in candidate_line:
+                    str_idx = search_idx
+                    break
+                if candidate_line.strip().startswith("def "):
+                    break
+
+            if str_idx is None:
+                continue
+
+            # Ensure there are no other attribute mutations for this mock
+            other_attr_usage = any(
+                f"{var_name}." in candidate_line and "__str__" not in candidate_line
+                for candidate_line in lines
+            )
+            if other_attr_usage:
+                continue
+
+            str_line = lines[str_idx]
+            value_match = re.search(
+                r"__str__\.return_value\s*=\s*(['\"])(?P<path>.+?)\1",
+                str_line,
+            )
+            if not value_match:
+                continue
+
+            path_literal = value_match.group("path")
+            quote_char = value_match.group(1)
+
+            # Rebuild the assignment with a concrete Path literal
+            replacement_line = (
+                f"{indent}{var_name} = Path({quote_char}{path_literal}{quote_char})"
+            )
+
+            if not added_open_patch:
+                replacement_line = (
+                    f"{replacement_line}\n"
+                    f"{indent}mocker.patch('builtins.open', mocker.mock_open())"
+                )
+                added_open_patch = True
+
+            replacements[idx] = replacement_line
+            skip_indices.add(str_idx)
+
+        if not replacements and not skip_indices:
+            return test_code_snippet
+
+        new_lines = []
+        for idx, line in enumerate(lines):
+            if idx in skip_indices:
+                continue
+            if idx in replacements:
+                new_lines.append(replacements[idx])
+            else:
+                new_lines.append(line)
+
+        return "\n".join(new_lines)
+
+    def _qualify_source_references_with_module_alias(
+        self, test_code_snippet: str, module_name: str, alias_name: str
+    ) -> tuple[str, bool]:
+        """Rewrite calls into module-qualified references when needed."""
+        try:
+            tree = ast.parse(test_code_snippet, type_comments=True)
+        except SyntaxError:
+            return test_code_snippet, False
+
+        lines = test_code_snippet.splitlines(keepends=True)
+        if not lines:
+            return test_code_snippet, False
+
+        line_offsets = []
+        total = 0
+        for line in lines:
+            line_offsets.append(total)
+            total += len(line)
+
+        replacements: list[tuple[int, int, str]] = []
+        alias_needed = False
+        source_symbols = self.source_defined_symbols
+
+        def node_offsets(node: ast.AST) -> tuple[int, int] | None:
+            if not (
+                hasattr(node, "lineno")
+                and hasattr(node, "col_offset")
+                and hasattr(node, "end_lineno")
+                and hasattr(node, "end_col_offset")
+            ):
+                return None
+            start = line_offsets[node.lineno - 1] + node.col_offset
+            end = line_offsets[node.end_lineno - 1] + node.end_col_offset
+            return start, end
+
+        class _Collector(ast.NodeVisitor):
+            def visit_Call(self, node):
+                nonlocal alias_needed
+                if isinstance(node.func, ast.Name):
+                    func_name = node.func.id
+                    if func_name in source_symbols:
+                        offsets = node_offsets(node.func)
+                        if offsets:
+                            start, end = offsets
+                            replacements.append(
+                                (start, end, f"{alias_name}.{func_name}")
+                            )
+                            alias_needed = True
+                self.generic_visit(node)
+
+            def visit_Attribute(self, node):
+                nonlocal alias_needed
+                if (
+                    isinstance(node.value, ast.Name)
+                    and node.value.id == module_name
+                ):
+                    offsets = node_offsets(node.value)
+                    if offsets:
+                        start, end = offsets
+                        replacements.append((start, end, alias_name))
+                        alias_needed = True
+                self.generic_visit(node)
+
+        _Collector().visit(tree)
+
+        if not replacements:
+            return test_code_snippet, False
+
+        # Deduplicate overlapping replacements by keeping the last occurrence per span.
+        unique_replacements: dict[tuple[int, int], str] = {}
+        for start, end, text in replacements:
+            unique_replacements[(start, end)] = text
+
+        new_code = test_code_snippet
+        for (start, end), text in sorted(
+            unique_replacements.items(), key=lambda item: item[0][0], reverse=True
+        ):
+            new_code = new_code[:start] + text + new_code[end:]
+
+        return new_code, alias_needed
