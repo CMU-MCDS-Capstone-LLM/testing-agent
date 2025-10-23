@@ -24,15 +24,6 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 import yaml
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-PACKAGE_ROOT = PROJECT_ROOT / "lsp_repograph"
-
-for path in (PROJECT_ROOT, PACKAGE_ROOT):
-    path_str = str(path)
-    if path_str not in sys.path:
-        sys.path.insert(0, path_str)
-
 from lsp_repograph.core.multilspy_client import MultilspyLSPClient  # type: ignore[attr-defined]
 
 

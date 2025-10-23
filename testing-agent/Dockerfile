@@ -20,18 +20,9 @@ COPY testing-agent/run.sh testing-agent/config.sh ./
 COPY testing-agent/scripts/build_pytest_args.py ./scripts/
 COPY testing-agent/repograph_runner ./repograph_runner
 
-# Install lsp_repograph and copy initialize_params.json to installed package
-COPY lsp_repograph ./lsp_repograph
-RUN pip install --no-cache-dir ./lsp_repograph
+ARG LSP_REPOGRAPH_SPEC="lsp-repograph==0.1.0"
+RUN pip install --no-cache-dir "${LSP_REPOGRAPH_SPEC}"
 RUN pip install --no-cache-dir --upgrade "jedi-language-server==0.41.4"
-RUN python - <<'PY'
-import shutil, pathlib
-src = pathlib.Path("/app/lsp_repograph/lsp_repograph/core/lsp/jedi_language_server/initialize_params.json")
-# Install to site-packages with same nested structure as local
-dst = pathlib.Path("/usr/local/lib/python3.11/site-packages/lsp_repograph/core/lsp/jedi_language_server/initialize_params.json")
-dst.parent.mkdir(parents=True, exist_ok=True)
-shutil.copy(src, dst)
-PY
 
 COPY workspace/keep2roam /workspace/keep2roam
 COPY workspace/keep2roam_commit.yaml /workspace/keep2roam_commit.yaml

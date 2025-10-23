@@ -16,10 +16,10 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # These variables make it easy to change the command-line arguments for cover-agent.
 REPO_NAME="keep2roam"
 # Auto-detect if running locally or in container
-if [ -d "/workspace/$REPO_NAME" ]; then
-    PROJECT_ROOT="/workspace/$REPO_NAME"
+if [ -d "/demos/$REPO_NAME" ]; then
+    PROJECT_ROOT="/demos/$REPO_NAME"
 else
-    PROJECT_ROOT="$ROOT_DIR/workspace/$REPO_NAME"
+    PROJECT_ROOT="$ROOT_DIR/demos/$REPO_NAME"
 fi
 CODE_COVERAGE_REPORT_PATH="$PROJECT_ROOT/.pytest_cache/coverage.xml"
 TEST_COMMAND="pytest"
@@ -42,11 +42,11 @@ Whenever you mock domain objects (Notes, etc.), set every attribute or method th
 Focus on uncovered lines from the latest coverage report. Skip tests that would only exercise code that already has non-zero hits.
 
 Coverage priorities for convert.py:
-  • Cover the open_note failure path by making NoteSchema().load raise, asserting SystemExit, and verifying that the printed output includes the failing Path.
-  • Cover the module entry guard by importing convert as convert_module, patching run_parser/convert, and calling convert_module.main().
+  1. If lines 18-20 (the open_note exception handler) remain uncovered, you MUST generate a test that triggers NoteSchema().load to raise, asserts SystemExit, and confirms the printed Path appears in stdout. Treat this as mandatory even though it is an error branch.
+  2. If the module entry glue (lines around main()) is still uncovered, import convert as convert_module, patch run_parser/convert, invoke convert_module.main(), and assert the helpers are called with the expected arguments. Do not create duplicate tests if this behavior is already covered in the current suite.
 
-Generate normal (happy-path) scenarios first, but it is acceptable to hit the specific deterministic failure path described above when it is the only way to cover the remaining lines.
-Ensure each proposed test adds new line or branch coverage; otherwise, omit it.
+Generate normal (happy-path) scenarios first, but fulfil the mandatory exception-path test above whenever those lines are uncovered.
+Ensure each proposed test adds new line or branch coverage; skip any test that duplicates existing behavior.
 "
 
 # --- Environment and Output Setup ---
@@ -56,10 +56,10 @@ TEST_REQUIREMENTS_FILE=""
 OUTPUT_FILE="$TEST_COMMAND_DIR/testing_agent_output.txt"
 
 # --- LSP-Repograph Configuration ---
-if [ -f "/workspace/${REPO_NAME}_commit.yaml" ]; then
-    MIGRATION_CONFIG="/workspace/${REPO_NAME}_commit.yaml"
+if [ -f "/demos/${REPO_NAME}_commit.yaml" ]; then
+    MIGRATION_CONFIG="/demos/${REPO_NAME}_commit.yaml"
 else
-    MIGRATION_CONFIG="$ROOT_DIR/workspace/${REPO_NAME}_commit.yaml"
+    MIGRATION_CONFIG="$ROOT_DIR/demos/${REPO_NAME}_commit.yaml"
 fi
 # Auto-detect Python: use container path if exists, otherwise find local python3
 if [ -x "/usr/local/bin/python" ]; then
