@@ -26,7 +26,7 @@ TEST_COMMAND="pytest"
 TEST_COMMAND_DIR="$PROJECT_ROOT/tests"
 COVERAGE_TYPE="cobertura"
 DESIRED_COVERAGE=90
-MAX_ITERATIONS=8
+MAX_ITERATIONS=7
 MODEL="gpt-4o-2024-08-06"
 API_BASE="https://ai-gateway.andrew.cmu.edu/"
 ADDITIONAL_INSTRUCTIONS="
@@ -52,11 +52,9 @@ TEST_REQUIREMENTS_FILE=""
 OUTPUT_FILE="$TEST_COMMAND_DIR/testing_agent_output.txt"
 
 # --- LSP-Repograph Configuration ---
-if [ -f "/demos/${REPO_NAME}_commit.yaml" ]; then
-    MIGRATION_CONFIG="/demos/${REPO_NAME}_commit.yaml"
-else
-    MIGRATION_CONFIG="$ROOT_DIR/demos/${REPO_NAME}_commit.yaml"
-fi
+MIGRATION_COMMIT="d340eea2fdedde8908334eda34325d058fc88282"
+MIGRATION_COMMIT_URL="https://github.com/adithyabsk/keep2roam/commit/d340eea2fdedde8908334eda34325d058fc88282"
+MIGRATION_REPO="adithyabsk/keep2roam"
 
 if [ -d "/migration" ]; then
     MIGRATION_DATASET_DIR="/migration"

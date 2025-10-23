@@ -5,8 +5,7 @@
   },
   "library_consumers": {
     "files": [
-      "convert.py",
-      "tests/test_convert.py"
+      "convert.py"
     ],
     "references": [
       {
@@ -26,12 +25,6 @@
         "absolute_path": "/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py",
         "line": 49,
         "character": 14
-      },
-      {
-        "relative_path": "tests/test_convert.py",
-        "absolute_path": "/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests/test_convert.py",
-        "line": 2,
-        "character": 8
       }
     ]
   },

@@ -70713,6 +70713,2942 @@ Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/dem
                 </td>
             </tr>
             
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Test failed</td>
+                <td>1</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-added">+ from convert import open_note</span>
+<span class="diff-added">+ from unittest import mock</span>
+<span class="diff-added">+ import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_open_note_valid_json(mocker):</span>
+<span class="diff-added">+     mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-added">+     mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     assert note.title == 'Test Note'</span>
+<span class="diff-added">+     assert note.content == 'This is a test note.'</span>
+<span class="diff-added">+     mock_json_load.assert_called_once()</span>
+<span class="diff-added">+     mock_note_schema.assert_called_once()</span>
+<span class="diff-added">+ </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 2 items
+
+test_convert.py .F                                                       [100%]
+
+=================================== FAILURES ===================================
+__________________________ test_open_note_valid_json ___________________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x104c5c310>
+
+    def test_open_note_valid_json(mocker):
+        mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})
+        mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))
+    
+>       note = convert_module.open_note(Path('valid_note.json'))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+test_convert.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+json_fpath = PosixPath('valid_note.json')
+
+    def open_note(json_fpath: Path) -> Note:
+        # Open the json_file
+>       with open(json_fpath, 'r') as f:
+             ^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'valid_note.json'
+
+../convert.py:12: FileNotFoundError
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36     25    31%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36     25    31%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+=========================== short test summary info ============================
+FAILED test_convert.py::test_open_note_valid_json - FileNotFoundError: [Errno...
+==================== 1 failed, 1 passed, 1 warning in 0.11s ====================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_open_note_valid_json(mocker):
+    mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})
+    mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))
+    
+    note = convert_module.open_note(Path('valid_note.json'))
+    
+    assert note.title == 'Test Note'
+    assert note.content == 'This is a test note.'
+    mock_json_load.assert_called_once()
+    mock_note_schema.assert_called_once()
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import open_note
+from unittest import mock
+import convert as convert_module</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Test failed</td>
+                <td>1</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-added">+ from convert import open_note</span>
+<span class="diff-added">+ from unittest import mock</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_open_note_invalid_json(mocker):</span>
+<span class="diff-added">+     mocker.patch('json.load', side_effect=Exception('Invalid JSON'))</span>
+<span class="diff-added">+     mock_print = mocker.patch('builtins.print')</span>
+<span class="diff-added">+     mock_quit = mocker.patch('builtins.quit')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     open_note_path = Path('invalid_note.json')</span>
+<span class="diff-added">+     convert_module.open_note(open_note_path)</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_print.assert_called_once_with(open_note_path)</span>
+<span class="diff-added">+     mock_quit.assert_called_once()</span>
+<span class="diff-added">+ </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 2 items
+
+test_convert.py .F                                                       [100%]
+
+=================================== FAILURES ===================================
+_________________________ test_open_note_invalid_json __________________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x103743f50>
+
+    def test_open_note_invalid_json(mocker):
+        mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+        mock_print = mocker.patch('builtins.print')
+        mock_quit = mocker.patch('builtins.quit')
+    
+        open_note_path = Path('invalid_note.json')
+>       convert_module.open_note(open_note_path)
+        ^^^^^^^^^^^^^^
+E       NameError: name 'convert_module' is not defined
+
+test_convert.py:21: NameError
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36     26    28%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36     26    28%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+=========================== short test summary info ============================
+FAILED test_convert.py::test_open_note_invalid_json - NameError: name 'conver...
+==================== 1 failed, 1 passed, 1 warning in 0.09s ====================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_open_note_invalid_json(mocker):
+    mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+    mock_print = mocker.patch('builtins.print')
+    mock_quit = mocker.patch('builtins.quit')
+    
+    open_note_path = Path('invalid_note.json')
+    convert_module.open_note(open_note_path)
+    
+    mock_print.assert_called_once_with(open_note_path)
+    mock_quit.assert_called_once()
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import open_note
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Test failed</td>
+                <td>1</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-added">+ from convert import write_or_append_note</span>
+<span class="diff-added">+ from unittest import mock</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_write_or_append_note_new_file(mocker):</span>
+<span class="diff-added">+     mock_note = mocker.Mock()</span>
+<span class="diff-added">+     mock_note.date_string = '2023-10-01'</span>
+<span class="diff-added">+     mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_path = mocker.Mock()</span>
+<span class="diff-added">+     mock_path.joinpath.return_value.is_file.return_value = False</span>
+<span class="diff-added">+     mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'w')</span>
+<span class="diff-added">+     mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-added">+ </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 2 items
+
+test_convert.py .F                                                       [100%]
+
+=================================== FAILURES ===================================
+______________________ test_write_or_append_note_new_file ______________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10527fed0>
+
+    def test_write_or_append_note_new_file(mocker):
+        mock_note = mocker.Mock()
+        mock_note.date_string = '2023-10-01'
+        mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'
+    
+        mock_path = mocker.Mock()
+        mock_path.joinpath.return_value.is_file.return_value = False
+        mock_open = mocker.patch('builtins.open', mocker.mock_open())
+    
+>       convert_module.write_or_append_note(mock_note, mock_path)
+        ^^^^^^^^^^^^^^
+E       NameError: name 'convert_module' is not defined
+
+test_convert.py:24: NameError
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36     26    28%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36     26    28%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+=========================== short test summary info ============================
+FAILED test_convert.py::test_write_or_append_note_new_file - NameError: name ...
+==================== 1 failed, 1 passed, 1 warning in 0.09s ====================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_write_or_append_note_new_file(mocker):
+    mock_note = mocker.Mock()
+    mock_note.date_string = '2023-10-01'
+    mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'
+    
+    mock_path = mocker.Mock()
+    mock_path.joinpath.return_value.is_file.return_value = False
+    mock_open = mocker.patch('builtins.open', mocker.mock_open())
+    
+    convert_module.write_or_append_note(mock_note, mock_path)
+    
+    mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'w')
+    mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import write_or_append_note
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Test failed</td>
+                <td>1</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-added">+ from convert import convert</span>
+<span class="diff-added">+ from unittest import mock</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_convert_process_json_files(mocker):</span>
+<span class="diff-added">+     mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-added">+         mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-added">+         mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-added">+     ])</span>
+<span class="diff-added">+     mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-added">+     mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_iterdir.assert_called_once()</span>
+<span class="diff-added">+     assert mock_open_note.call_count == 2</span>
+<span class="diff-added">+     assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-added">+ </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 2 items
+
+test_convert.py .F                                                       [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_convert_process_json_files ________________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x103620850>
+
+    def test_convert_process_json_files(mocker):
+        mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[
+            mocker.Mock(is_file=lambda: True, suffix='.json'),
+            mocker.Mock(is_file=lambda: True, suffix='.json')
+        ])
+        mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))
+        mock_write_or_append_note = mocker.patch('convert.write_or_append_note')
+    
+>       convert_module.convert(Path('read_path'), Path('write_path'))
+        ^^^^^^^^^^^^^^
+E       NameError: name 'convert_module' is not defined
+
+test_convert.py:23: NameError
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36     26    28%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36     26    28%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+=========================== short test summary info ============================
+FAILED test_convert.py::test_convert_process_json_files - NameError: name 'co...
+==================== 1 failed, 1 passed, 1 warning in 0.09s ====================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_convert_process_json_files(mocker):
+    mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[
+        mocker.Mock(is_file=lambda: True, suffix='.json'),
+        mocker.Mock(is_file=lambda: True, suffix='.json')
+    ])
+    mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))
+    mock_write_or_append_note = mocker.patch('convert.write_or_append_note')
+    
+    convert_module.convert(Path('read_path'), Path('write_path'))
+    
+    mock_iterdir.assert_called_once()
+    assert mock_open_note.call_count == 2
+    assert mock_write_or_append_note.call_count == 2
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import convert
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-PASS">PASS</td>
+                <td></td>
+                <td>0</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-added">+ from convert import open_note</span>
+<span class="diff-added">+ from unittest import mock</span>
+<span class="diff-added">+ import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-added">+     mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-added">+     mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-added">+     mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     assert note.title == 'Test Note'</span>
+<span class="diff-added">+     assert note.content == 'This is a test note.'</span>
+<span class="diff-added">+     mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-added">+     mock_json_load.assert_called_once()</span>
+<span class="diff-added">+     mock_note_schema.assert_called_once()</span>
+<span class="diff-added">+ </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 2 items
+
+test_convert.py ..                                                       [100%]
+
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36     22    39%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36     22    39%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+========================= 2 passed, 1 warning in 0.11s =========================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_open_note_valid_json_mocked_file(mocker):
+    mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))
+    mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})
+    mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))
+    
+    note = convert_module.open_note(Path('valid_note.json'))
+    
+    assert note.title == 'Test Note'
+    assert note.content == 'This is a test note.'
+    mock_open.assert_called_once_with(Path('valid_note.json'), 'r')
+    mock_json_load.assert_called_once()
+    mock_note_schema.assert_called_once()
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import open_note
+from unittest import mock
+import convert as convert_module</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-PASS">PASS</td>
+                <td></td>
+                <td>0</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-added">+ from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-added">+     mock_note = mocker.Mock()</span>
+<span class="diff-added">+     mock_note.date_string = '2023-10-01'</span>
+<span class="diff-added">+     mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_path = mocker.Mock()</span>
+<span class="diff-added">+     mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-added">+     mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-added">+     mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 3 items
+
+test_convert.py ...                                                      [100%]
+
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36     17    53%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36     17    53%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+========================= 3 passed, 1 warning in 0.10s =========================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_write_or_append_note_existing_file(mocker):
+    mock_note = mocker.Mock()
+    mock_note.date_string = '2023-10-01'
+    mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'
+    
+    mock_path = mocker.Mock()
+    mock_path.joinpath.return_value.is_file.return_value = True
+    mock_open = mocker.patch('builtins.open', mocker.mock_open())
+    
+    convert_module.write_or_append_note(mock_note, mock_path)
+    
+    mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')
+    mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import write_or_append_note
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-PASS">PASS</td>
+                <td></td>
+                <td>0</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-added">+ from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-added">+     mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-added">+         mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-added">+         mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-added">+     ])</span>
+<span class="diff-added">+     mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-added">+     mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_iterdir.assert_called_once()</span>
+<span class="diff-added">+     assert mock_open_note.call_count == 2</span>
+<span class="diff-added">+     assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 4 items
+
+test_convert.py ....                                                     [100%]
+
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36     11    69%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36     11    69%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+========================= 4 passed, 1 warning in 0.10s =========================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_convert_process_json_files_mocked(mocker):
+    mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[
+        mocker.Mock(is_file=lambda: True, suffix='.json'),
+        mocker.Mock(is_file=lambda: True, suffix='.json')
+    ])
+    mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))
+    mock_write_or_append_note = mocker.patch('convert.write_or_append_note')
+    
+    convert_module.convert(Path('read_path'), Path('write_path'))
+    
+    mock_iterdir.assert_called_once()
+    assert mock_open_note.call_count == 2
+    assert mock_write_or_append_note.call_count == 2
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import convert
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-PASS">PASS</td>
+                <td></td>
+                <td>0</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-added">+ from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_run_parser_arguments(mocker):</span>
+<span class="diff-added">+     mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     args = convert_module.run_parser()</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     assert args.input == Path('input_path')</span>
+<span class="diff-added">+     assert args.output == Path('output_path')</span>
+<span class="diff-added">+     mock_args.assert_called_once()</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 5 items
+
+test_convert.py .....                                                    [100%]
+
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      6    83%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      6    83%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+========================= 5 passed, 1 warning in 0.10s =========================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_run_parser_arguments(mocker):
+    mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))
+    
+    args = convert_module.run_parser()
+    
+    assert args.input == Path('input_path')
+    assert args.output == Path('output_path')
+    mock_args.assert_called_once()
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import run_parser
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Test failed</td>
+                <td>1</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_open_note_invalid_json(mocker):</span>
+<span class="diff-added">+     mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-added">+     mocker.patch('json.load', side_effect=Exception('Invalid JSON'))</span>
+<span class="diff-added">+     mock_print = mocker.patch('builtins.print')</span>
+<span class="diff-added">+     mock_quit = mocker.patch('builtins.quit')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     open_note_path = Path('invalid_note.json')</span>
+<span class="diff-added">+     convert_module.open_note(open_note_path)</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_print.assert_called_once_with(open_note_path)</span>
+<span class="diff-added">+     mock_quit.assert_called_once()</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 6 items
+
+test_convert.py .F....                                                   [100%]
+
+=================================== FAILURES ===================================
+_________________________ test_open_note_invalid_json __________________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x10292e650>
+
+    def test_open_note_invalid_json(mocker):
+        mocker.patch('builtins.open', mocker.mock_open())
+        mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+        mock_print = mocker.patch('builtins.print')
+        mock_quit = mocker.patch('builtins.quit')
+    
+        open_note_path = Path('invalid_note.json')
+>       convert_module.open_note(open_note_path)
+
+test_convert.py:26: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../convert.py:13: in open_note
+    keep_dict = json.load(f)
+                ^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1124: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1128: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='load' id='4338284112'>
+args = (<MagicMock name='open()' id='4316645392'>,), kwargs = {}
+effect = Exception('Invalid JSON')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               Exception: Invalid JSON
+
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1183: Exception
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      6    83%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      6    83%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+=========================== short test summary info ============================
+FAILED test_convert.py::test_open_note_invalid_json - Exception: Invalid JSON
+==================== 1 failed, 5 passed, 1 warning in 0.25s ====================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_open_note_invalid_json(mocker):
+    mocker.patch('builtins.open', mocker.mock_open())
+    mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+    mock_print = mocker.patch('builtins.print')
+    mock_quit = mocker.patch('builtins.quit')
+    
+    open_note_path = Path('invalid_note.json')
+    convert_module.open_note(open_note_path)
+    
+    mock_print.assert_called_once_with(open_note_path)
+    mock_quit.assert_called_once()
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import open_note
+from unittest import mock
+import convert as convert_module</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-PASS">PASS</td>
+                <td></td>
+                <td>0</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-added">+ from convert import main</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_main_function_execution(mocker):</span>
+<span class="diff-added">+     mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-added">+     mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     convert_module.main()</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_run_parser.assert_called_once()</span>
+<span class="diff-added">+     mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 6 items
+
+test_convert.py ......                                                   [100%]
+
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      4    89%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      4    89%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+========================= 6 passed, 1 warning in 0.12s =========================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_main_function_execution(mocker):
+    mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))
+    mock_convert = mocker.patch('convert.convert')
+    
+    convert_module.main()
+    
+    mock_run_parser.assert_called_once()
+    mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import main
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Test failed</td>
+                <td>1</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-unchanged">  from convert import main</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_open_note_invalid_json_handling(mocker):</span>
+<span class="diff-added">+     mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-added">+     mocker.patch('json.load', side_effect=Exception('Invalid JSON'))</span>
+<span class="diff-added">+     mock_print = mocker.patch('builtins.print')</span>
+<span class="diff-added">+     mock_quit = mocker.patch('builtins.quit')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     open_note_path = Path('invalid_note.json')</span>
+<span class="diff-added">+     convert_module.open_note(open_note_path)</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_print.assert_called_once_with(open_note_path)</span>
+<span class="diff-added">+     mock_quit.assert_called_once()</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_main_function_execution(mocker):</span>
+<span class="diff-unchanged">      mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.main()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_run_parser.assert_called_once()</span>
+<span class="diff-unchanged">      mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 7 items
+
+test_convert.py .F.....                                                  [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_open_note_invalid_json_handling _____________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x104916c10>
+
+    def test_open_note_invalid_json_handling(mocker):
+        mocker.patch('builtins.open', mocker.mock_open())
+        mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+        mock_print = mocker.patch('builtins.print')
+        mock_quit = mocker.patch('builtins.quit')
+    
+        open_note_path = Path('invalid_note.json')
+>       convert_module.open_note(open_note_path)
+
+test_convert.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../convert.py:13: in open_note
+    keep_dict = json.load(f)
+                ^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1124: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1128: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='load' id='4356964112'>
+args = (<MagicMock name='open()' id='4357053264'>,), kwargs = {}
+effect = Exception('Invalid JSON')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               Exception: Invalid JSON
+
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1183: Exception
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      4    89%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      4    89%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+=========================== short test summary info ============================
+FAILED test_convert.py::test_open_note_invalid_json_handling - Exception: Inv...
+==================== 1 failed, 6 passed, 1 warning in 0.23s ====================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_open_note_invalid_json_handling(mocker):
+    mocker.patch('builtins.open', mocker.mock_open())
+    mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+    mock_print = mocker.patch('builtins.print')
+    mock_quit = mocker.patch('builtins.quit')
+    
+    open_note_path = Path('invalid_note.json')
+    convert_module.open_note(open_note_path)
+    
+    mock_print.assert_called_once_with(open_note_path)
+    mock_quit.assert_called_once()
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import open_note
+from unittest import mock
+import convert as convert_module</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Coverage did not increase. Maybe the test did run but did not increase coverage, or maybe the test execution was skipped due to some problem</td>
+                <td>0</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-unchanged">  from convert import main</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_main_function_execution(mocker):</span>
+<span class="diff-added">+     mock_args = mocker.Mock()</span>
+<span class="diff-added">+     mock_args.input = Path('input_path')</span>
+<span class="diff-added">+     mock_args.output = Path('output_path')</span>
+<span class="diff-added">+     mock_run_parser = mocker.patch('convert.run_parser', return_value=mock_args)</span>
+<span class="diff-added">+     mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     convert_module.main()</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_run_parser.assert_called_once()</span>
+<span class="diff-added">+     mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_main_function_execution(mocker):</span>
+<span class="diff-unchanged">      mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.main()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_run_parser.assert_called_once()</span>
+<span class="diff-unchanged">      mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 6 items
+
+test_convert.py ......                                                   [100%]
+
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      4    89%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      4    89%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+========================= 6 passed, 1 warning in 0.10s =========================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_main_function_execution(mocker):
+    mock_args = mocker.Mock()
+    mock_args.input = Path('input_path')
+    mock_args.output = Path('output_path')
+    mock_run_parser = mocker.patch('convert.run_parser', return_value=mock_args)
+    mock_convert = mocker.patch('convert.convert')
+    
+    convert_module.main()
+    
+    mock_run_parser.assert_called_once()
+    mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import main
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Coverage did not increase. Maybe the test did run but did not increase coverage, or maybe the test execution was skipped due to some problem</td>
+                <td>0</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-unchanged">  from convert import main</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_main_function_execution(mocker):</span>
+<span class="diff-added">+     mock_args = mocker.Mock()</span>
+<span class="diff-added">+     mock_args.input = Path('input_path')</span>
+<span class="diff-added">+     mock_args.output = Path('output_path')</span>
+<span class="diff-added">+     mock_run_parser = mocker.patch('convert.run_parser', return_value=mock_args)</span>
+<span class="diff-added">+     mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     convert_module.main()</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_run_parser.assert_called_once()</span>
+<span class="diff-added">+     mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_main_function_execution(mocker):</span>
+<span class="diff-unchanged">      mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.main()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_run_parser.assert_called_once()</span>
+<span class="diff-unchanged">      mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 6 items
+
+test_convert.py ......                                                   [100%]
+
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      4    89%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      4    89%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+========================= 6 passed, 1 warning in 0.10s =========================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_main_function_execution(mocker):
+    mock_args = mocker.Mock()
+    mock_args.input = Path('input_path')
+    mock_args.output = Path('output_path')
+    mock_run_parser = mocker.patch('convert.run_parser', return_value=mock_args)
+    mock_convert = mocker.patch('convert.convert')
+    
+    convert_module.main()
+    
+    mock_run_parser.assert_called_once()
+    mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import main
+from unittest import mock
+import convert as convert_module</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Test failed</td>
+                <td>1</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-unchanged">  from convert import main</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_open_note_invalid_json_handling(mocker):</span>
+<span class="diff-added">+     mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-added">+     mocker.patch('json.load', side_effect=Exception('Invalid JSON'))</span>
+<span class="diff-added">+     mock_print = mocker.patch('builtins.print')</span>
+<span class="diff-added">+     mock_quit = mocker.patch('builtins.quit')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     open_note_path = Path('invalid_note.json')</span>
+<span class="diff-added">+     convert_module.open_note(open_note_path)</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_print.assert_called_once_with(open_note_path)</span>
+<span class="diff-added">+     mock_quit.assert_called_once()</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_main_function_execution(mocker):</span>
+<span class="diff-unchanged">      mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.main()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_run_parser.assert_called_once()</span>
+<span class="diff-unchanged">      mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 7 items
+
+test_convert.py .F.....                                                  [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_open_note_invalid_json_handling _____________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x103746a50>
+
+    def test_open_note_invalid_json_handling(mocker):
+        mocker.patch('builtins.open', mocker.mock_open())
+        mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+        mock_print = mocker.patch('builtins.print')
+        mock_quit = mocker.patch('builtins.quit')
+    
+        open_note_path = Path('invalid_note.json')
+>       convert_module.open_note(open_note_path)
+
+test_convert.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../convert.py:13: in open_note
+    keep_dict = json.load(f)
+                ^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1124: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1128: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='load' id='4353063504'>
+args = (<MagicMock name='open()' id='4334044752'>,), kwargs = {}
+effect = Exception('Invalid JSON')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               Exception: Invalid JSON
+
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1183: Exception
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      4    89%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      4    89%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+=========================== short test summary info ============================
+FAILED test_convert.py::test_open_note_invalid_json_handling - Exception: Inv...
+==================== 1 failed, 6 passed, 1 warning in 0.18s ====================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_open_note_invalid_json_handling(mocker):
+    mocker.patch('builtins.open', mocker.mock_open())
+    mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+    mock_print = mocker.patch('builtins.print')
+    mock_quit = mocker.patch('builtins.quit')
+    
+    open_note_path = Path('invalid_note.json')
+    convert_module.open_note(open_note_path)
+    
+    mock_print.assert_called_once_with(open_note_path)
+    mock_quit.assert_called_once()
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import open_note
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Test failed</td>
+                <td>1</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-unchanged">  from convert import main</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_open_note_invalid_json_handling(mocker):</span>
+<span class="diff-added">+     mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-added">+     mocker.patch('json.load', side_effect=Exception('Invalid JSON'))</span>
+<span class="diff-added">+     mock_print = mocker.patch('builtins.print')</span>
+<span class="diff-added">+     mock_quit = mocker.patch('builtins.quit')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     open_note_path = Path('invalid_note.json')</span>
+<span class="diff-added">+     convert_module.open_note(open_note_path)</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_print.assert_called_once_with(open_note_path)</span>
+<span class="diff-added">+     mock_quit.assert_called_once()</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_main_function_execution(mocker):</span>
+<span class="diff-unchanged">      mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.main()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_run_parser.assert_called_once()</span>
+<span class="diff-unchanged">      mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 7 items
+
+test_convert.py .F.....                                                  [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_open_note_invalid_json_handling _____________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x105416a10>
+
+    def test_open_note_invalid_json_handling(mocker):
+        mocker.patch('builtins.open', mocker.mock_open())
+        mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+        mock_print = mocker.patch('builtins.print')
+        mock_quit = mocker.patch('builtins.quit')
+    
+        open_note_path = Path('invalid_note.json')
+>       convert_module.open_note(open_note_path)
+
+test_convert.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../convert.py:13: in open_note
+    keep_dict = json.load(f)
+                ^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1124: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1128: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='load' id='4383275664'>
+args = (<MagicMock name='open()' id='4361914256'>,), kwargs = {}
+effect = Exception('Invalid JSON')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               Exception: Invalid JSON
+
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1183: Exception
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      4    89%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      4    89%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+=========================== short test summary info ============================
+FAILED test_convert.py::test_open_note_invalid_json_handling - Exception: Inv...
+==================== 1 failed, 6 passed, 1 warning in 0.24s ====================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_open_note_invalid_json_handling(mocker):
+    mocker.patch('builtins.open', mocker.mock_open())
+    mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+    mock_print = mocker.patch('builtins.print')
+    mock_quit = mocker.patch('builtins.quit')
+    
+    open_note_path = Path('invalid_note.json')
+    convert_module.open_note(open_note_path)
+    
+    mock_print.assert_called_once_with(open_note_path)
+    mock_quit.assert_called_once()
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import open_note
+from unittest import mock
+import convert as convert_module</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Coverage did not increase. Maybe the test did run but did not increase coverage, or maybe the test execution was skipped due to some problem</td>
+                <td>0</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-unchanged">  from convert import main</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_main_function_execution(mocker):</span>
+<span class="diff-added">+     mock_args = mocker.Mock()</span>
+<span class="diff-added">+     mock_args.input = Path('input_path')</span>
+<span class="diff-added">+     mock_args.output = Path('output_path')</span>
+<span class="diff-added">+     mock_run_parser = mocker.patch('convert.run_parser', return_value=mock_args)</span>
+<span class="diff-added">+     mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     convert_module.main()</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_run_parser.assert_called_once()</span>
+<span class="diff-added">+     mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_main_function_execution(mocker):</span>
+<span class="diff-unchanged">      mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.main()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_run_parser.assert_called_once()</span>
+<span class="diff-unchanged">      mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 6 items
+
+test_convert.py ......                                                   [100%]
+
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      4    89%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      4    89%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+========================= 6 passed, 1 warning in 0.10s =========================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_main_function_execution(mocker):
+    mock_args = mocker.Mock()
+    mock_args.input = Path('input_path')
+    mock_args.output = Path('output_path')
+    mock_run_parser = mocker.patch('convert.run_parser', return_value=mock_args)
+    mock_convert = mocker.patch('convert.convert')
+    
+    convert_module.main()
+    
+    mock_run_parser.assert_called_once()
+    mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import main
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Test failed</td>
+                <td>1</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-unchanged">  from convert import main</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_open_note_invalid_json_handling(mocker):</span>
+<span class="diff-added">+     mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-added">+     mocker.patch('json.load', side_effect=Exception('Invalid JSON'))</span>
+<span class="diff-added">+     mock_print = mocker.patch('builtins.print')</span>
+<span class="diff-added">+     mock_quit = mocker.patch('builtins.quit')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     open_note_path = Path('invalid_note.json')</span>
+<span class="diff-added">+     convert_module.open_note(open_note_path)</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_print.assert_called_once_with(open_note_path)</span>
+<span class="diff-added">+     mock_quit.assert_called_once()</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_main_function_execution(mocker):</span>
+<span class="diff-unchanged">      mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.main()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_run_parser.assert_called_once()</span>
+<span class="diff-unchanged">      mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 7 items
+
+test_convert.py .F.....                                                  [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_open_note_invalid_json_handling _____________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x106e17050>
+
+    def test_open_note_invalid_json_handling(mocker):
+        mocker.patch('builtins.open', mocker.mock_open())
+        mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+        mock_print = mocker.patch('builtins.print')
+        mock_quit = mocker.patch('builtins.quit')
+    
+        open_note_path = Path('invalid_note.json')
+>       convert_module.open_note(open_note_path)
+
+test_convert.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../convert.py:13: in open_note
+    keep_dict = json.load(f)
+                ^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1124: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1128: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='load' id='4410523472'>
+args = (<MagicMock name='open()' id='4386691920'>,), kwargs = {}
+effect = Exception('Invalid JSON')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               Exception: Invalid JSON
+
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1183: Exception
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      4    89%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      4    89%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+=========================== short test summary info ============================
+FAILED test_convert.py::test_open_note_invalid_json_handling - Exception: Inv...
+==================== 1 failed, 6 passed, 1 warning in 0.21s ====================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_open_note_invalid_json_handling(mocker):
+    mocker.patch('builtins.open', mocker.mock_open())
+    mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+    mock_print = mocker.patch('builtins.print')
+    mock_quit = mocker.patch('builtins.quit')
+    
+    open_note_path = Path('invalid_note.json')
+    convert_module.open_note(open_note_path)
+    
+    mock_print.assert_called_once_with(open_note_path)
+    mock_quit.assert_called_once()
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import open_note
+from unittest import mock
+import convert as convert_module</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Coverage did not increase. Maybe the test did run but did not increase coverage, or maybe the test execution was skipped due to some problem</td>
+                <td>0</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-unchanged">  from convert import main</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_main_function_execution(mocker):</span>
+<span class="diff-added">+     mock_args = mocker.Mock()</span>
+<span class="diff-added">+     mock_args.input = Path('input_path')</span>
+<span class="diff-added">+     mock_args.output = Path('output_path')</span>
+<span class="diff-added">+     mock_run_parser = mocker.patch('convert.run_parser', return_value=mock_args)</span>
+<span class="diff-added">+     mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     convert_module.main()</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_run_parser.assert_called_once()</span>
+<span class="diff-added">+     mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_main_function_execution(mocker):</span>
+<span class="diff-unchanged">      mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.main()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_run_parser.assert_called_once()</span>
+<span class="diff-unchanged">      mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 6 items
+
+test_convert.py ......                                                   [100%]
+
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      4    89%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      4    89%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+========================= 6 passed, 1 warning in 0.11s =========================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_main_function_execution(mocker):
+    mock_args = mocker.Mock()
+    mock_args.input = Path('input_path')
+    mock_args.output = Path('output_path')
+    mock_run_parser = mocker.patch('convert.run_parser', return_value=mock_args)
+    mock_convert = mocker.patch('convert.convert')
+    
+    convert_module.main()
+    
+    mock_run_parser.assert_called_once()
+    mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import main
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Test failed</td>
+                <td>1</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-unchanged">  from convert import main</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_open_note_invalid_json_handling(mocker):</span>
+<span class="diff-added">+     mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-added">+     mocker.patch('json.load', side_effect=Exception('Invalid JSON'))</span>
+<span class="diff-added">+     mock_print = mocker.patch('builtins.print')</span>
+<span class="diff-added">+     mock_quit = mocker.patch('builtins.quit')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     open_note_path = Path('invalid_note.json')</span>
+<span class="diff-added">+     convert_module.open_note(open_note_path)</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_print.assert_called_once_with(open_note_path)</span>
+<span class="diff-added">+     mock_quit.assert_called_once()</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_main_function_execution(mocker):</span>
+<span class="diff-unchanged">      mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.main()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_run_parser.assert_called_once()</span>
+<span class="diff-unchanged">      mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 7 items
+
+test_convert.py .F.....                                                  [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_open_note_invalid_json_handling _____________________
+
+mocker = <pytest_mock.plugin.MockerFixture object at 0x105716a10>
+
+    def test_open_note_invalid_json_handling(mocker):
+        mocker.patch('builtins.open', mocker.mock_open())
+        mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+        mock_print = mocker.patch('builtins.print')
+        mock_quit = mocker.patch('builtins.quit')
+    
+        open_note_path = Path('invalid_note.json')
+>       convert_module.open_note(open_note_path)
+
+test_convert.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../convert.py:13: in open_note
+    keep_dict = json.load(f)
+                ^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1124: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1128: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <MagicMock name='load' id='4386049680'>
+args = (<MagicMock name='open()' id='4363863952'>,), kwargs = {}
+effect = Exception('Invalid JSON')
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               Exception: Invalid JSON
+
+/Users/shanrulin/.pyenv/versions/3.11.13/lib/python3.11/unittest/mock.py:1183: Exception
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      4    89%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      4    89%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+=========================== short test summary info ============================
+FAILED test_convert.py::test_open_note_invalid_json_handling - Exception: Inv...
+==================== 1 failed, 6 passed, 1 warning in 0.30s ====================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_open_note_invalid_json_handling(mocker):
+    mocker.patch('builtins.open', mocker.mock_open())
+    mocker.patch('json.load', side_effect=Exception('Invalid JSON'))
+    mock_print = mocker.patch('builtins.print')
+    mock_quit = mocker.patch('builtins.quit')
+    
+    open_note_path = Path('invalid_note.json')
+    convert_module.open_note(open_note_path)
+    
+    mock_print.assert_called_once_with(open_note_path)
+    mock_quit.assert_called_once()
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import open_note
+from unittest import mock
+import convert as convert_module</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
+            <tr>
+                <td class="status-FAIL">FAIL</td>
+                <td>Coverage did not increase. Maybe the test did run but did not increase coverage, or maybe the test execution was skipped due to some problem</td>
+                <td>0</td>
+                <td>python</td>
+                <td>
+                    <details>
+                        <summary>View Full Code</summary>
+                        <pre><code><span class="diff-unchanged">  # [AUTO-IMPORTED FROM SOURCE] — do not edit below manually</span>
+<span class="diff-unchanged">  import argparse</span>
+<span class="diff-unchanged">  from pathlib import Path</span>
+<span class="diff-unchanged">  import json</span>
+<span class="diff-unchanged">  from models import NoteSchema, Note</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  # do not delete this comment, this is where pytest adding import pkg msg</span>
+<span class="diff-unchanged">  import convert</span>
+<span class="diff-unchanged">  from convert import main</span>
+<span class="diff-unchanged">  from convert import run_parser</span>
+<span class="diff-unchanged">  from convert import convert</span>
+<span class="diff-unchanged">  from convert import write_or_append_note</span>
+<span class="diff-unchanged">  from convert import open_note</span>
+<span class="diff-unchanged">  from unittest import mock</span>
+<span class="diff-unchanged">  import convert as convert_module</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_dummy():</span>
+<span class="diff-unchanged">      assert True  # dummy test - placeholder for future tests</span>
+<span class="diff-added">+ </span>
+<span class="diff-added">+ def test_main_function_execution(mocker):</span>
+<span class="diff-added">+     mock_args = mocker.Mock()</span>
+<span class="diff-added">+     mock_args.input = Path('input_path')</span>
+<span class="diff-added">+     mock_args.output = Path('output_path')</span>
+<span class="diff-added">+     mock_run_parser = mocker.patch('convert.run_parser', return_value=mock_args)</span>
+<span class="diff-added">+     mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     convert_module.main()</span>
+<span class="diff-added">+     </span>
+<span class="diff-added">+     mock_run_parser.assert_called_once()</span>
+<span class="diff-added">+     mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-added">+ </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_main_function_execution(mocker):</span>
+<span class="diff-unchanged">      mock_run_parser = mocker.patch('convert.run_parser', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      mock_convert = mocker.patch('convert.convert')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.main()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_run_parser.assert_called_once()</span>
+<span class="diff-unchanged">      mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_run_parser_arguments(mocker):</span>
+<span class="diff-unchanged">      mock_args = mocker.patch('argparse.ArgumentParser.parse_args', return_value=argparse.Namespace(input=Path('input_path'), output=Path('output_path')))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      args = convert_module.run_parser()</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert args.input == Path('input_path')</span>
+<span class="diff-unchanged">      assert args.output == Path('output_path')</span>
+<span class="diff-unchanged">      mock_args.assert_called_once()</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_convert_process_json_files_mocked(mocker):</span>
+<span class="diff-unchanged">      mock_iterdir = mocker.patch('pathlib.Path.iterdir', return_value=[</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json'),</span>
+<span class="diff-unchanged">          mocker.Mock(is_file=lambda: True, suffix='.json')</span>
+<span class="diff-unchanged">      ])</span>
+<span class="diff-unchanged">      mock_open_note = mocker.patch('convert.open_note', return_value=mocker.Mock(is_empty=lambda: False))</span>
+<span class="diff-unchanged">      mock_write_or_append_note = mocker.patch('convert.write_or_append_note')</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.convert(Path('read_path'), Path('write_path'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_iterdir.assert_called_once()</span>
+<span class="diff-unchanged">      assert mock_open_note.call_count == 2</span>
+<span class="diff-unchanged">      assert mock_write_or_append_note.call_count == 2</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_write_or_append_note_existing_file(mocker):</span>
+<span class="diff-unchanged">      mock_note = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_note.date_string = '2023-10-01'</span>
+<span class="diff-unchanged">      mock_note.to_markdown_string.return_value = '# Test Note\nThis is a test note.'</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_path = mocker.Mock()</span>
+<span class="diff-unchanged">      mock_path.joinpath.return_value.is_file.return_value = True</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open())</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      convert_module.write_or_append_note(mock_note, mock_path)</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(mock_path.joinpath('2023-10-01.md'), 'a')</span>
+<span class="diff-unchanged">      mock_open().write.assert_called_once_with('# Test Note\nThis is a test note.')</span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  </span>
+<span class="diff-unchanged">  def test_open_note_valid_json_mocked_file(mocker):</span>
+<span class="diff-unchanged">      mock_open = mocker.patch('builtins.open', mocker.mock_open(read_data='{"title": "Test Note", "content": "This is a test note."}'))</span>
+<span class="diff-unchanged">      mock_json_load = mocker.patch('json.load', return_value={'title': 'Test Note', 'content': 'This is a test note.'})</span>
+<span class="diff-unchanged">      mock_note_schema = mocker.patch('models.NoteSchema.load', return_value=Note(title='Test Note', content='This is a test note.'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      note = convert_module.open_note(Path('valid_note.json'))</span>
+<span class="diff-unchanged">      </span>
+<span class="diff-unchanged">      assert note.title == 'Test Note'</span>
+<span class="diff-unchanged">      assert note.content == 'This is a test note.'</span>
+<span class="diff-unchanged">      mock_open.assert_called_once_with(Path('valid_note.json'), 'r')</span>
+<span class="diff-unchanged">      mock_json_load.assert_called_once()</span>
+<span class="diff-unchanged">      mock_note_schema.assert_called_once()</span>
+<span class="diff-unchanged">  </span></code></pre>
+                    </details>
+                </td>
+                <td>
+                    <details>
+                        <summary>View More</summary>
+                        <div><strong>STDERR:</strong> <pre><code class="language-python"></code></pre></div>
+                        <div><strong>STDOUT:</strong> <pre><code class="language-python">============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, anyio-4.11.0, cov-7.0.0
+collected 6 items
+
+test_convert.py ......                                                   [100%]
+
+=============================== warnings summary ===============================
+../../../testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                                                         Stmts   Miss  Cover
+------------------------------------------------------------------------------------------------
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py      36      4    89%
+------------------------------------------------------------------------------------------------
+TOTAL                                                                           36      4    89%
+Coverage XML written to file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml
+========================= 6 passed, 1 warning in 0.12s =========================
+</code></pre></div>
+                        <div><strong>Test Code:</strong> <pre><code class="language-python">def test_main_function_execution(mocker):
+    mock_args = mocker.Mock()
+    mock_args.input = Path('input_path')
+    mock_args.output = Path('output_path')
+    mock_run_parser = mocker.patch('convert.run_parser', return_value=mock_args)
+    mock_convert = mocker.patch('convert.convert')
+    
+    convert_module.main()
+    
+    mock_run_parser.assert_called_once()
+    mock_convert.assert_called_once_with(Path('input_path'), Path('output_path'))
+</code></pre></div>
+                        <div><strong>Imports:</strong> <pre><code class="language-python">from convert import main
+from unittest import mock
+</code></pre></div>
+                    </details>
+                </td>
+            </tr>
+            
         </table>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.23.0/prism.min.js"></script>
     </body>
