@@ -13,3 +13,6 @@ dist/
 venv/
 *.log
 migration/
+testing-agent/repograph_runner/output/
+test_results.html
+*.db
