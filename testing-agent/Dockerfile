@@ -16,12 +16,13 @@ RUN pip install --no-cache-dir -e .
 COPY testing-agent/qodo-requirements.txt ./qodo-requirements.txt
 RUN pip install --no-cache-dir -r qodo-requirements.txt
 
+COPY testing-agent/testing-agent-requirements.txt ./testing-agent-requirements.txt
+RUN pip install --no-cache-dir -r testing-agent-requirements.txt
+
 COPY testing-agent/run.sh testing-agent/config.sh ./
 COPY testing-agent/scripts/build_pytest_args.py ./scripts/
 COPY testing-agent/repograph_runner ./repograph_runner
 
-ARG LSP_REPOGRAPH_SPEC="lsp-repograph==0.1.0"
-RUN pip install --no-cache-dir "${LSP_REPOGRAPH_SPEC}"
 RUN pip install --no-cache-dir --upgrade "jedi-language-server==0.41.4"
 
 COPY workspace/keep2roam /workspace/keep2roam

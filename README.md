@@ -75,7 +75,7 @@ docker compose up testing-agent
 ```
 
 The container will:
-- Export API keys.
+- Export API keys (set `OPENAI_API_KEY`; `testing-agent/config.sh` defaults `API_BASE` to `https://ai-gateway.andrew.cmu.edu/`).
 - Install dependencies from $TEST_REQUIREMENTS_FILE.
 - Ensure tests/ folder and conftest.py exist.
 - Walk through each Python file under $PROJECT_ROOT.

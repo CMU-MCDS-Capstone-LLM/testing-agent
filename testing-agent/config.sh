@@ -26,9 +26,9 @@ TEST_COMMAND="pytest"
 TEST_COMMAND_DIR="$PROJECT_ROOT/tests"
 COVERAGE_TYPE="cobertura"
 DESIRED_COVERAGE=90
-MAX_ITERATIONS=10
-MODEL="openai/gpt-4o"
-API_BASE="https://cmu.litellm.ai" 
+MAX_ITERATIONS=8
+MODEL="gpt-4o-2024-08-06"
+API_BASE="https://ai-gateway.andrew.cmu.edu/"
 ADDITIONAL_INSTRUCTIONS="
 Only mock external dependencies; never patch functions or classes defined inside the source file under test.
 Let the real implementation run; patch file, network, or database I/O only when necessary, and patch each target (for example, builtins.open) once per test.
@@ -56,6 +56,12 @@ if [ -f "/demos/${REPO_NAME}_commit.yaml" ]; then
     MIGRATION_CONFIG="/demos/${REPO_NAME}_commit.yaml"
 else
     MIGRATION_CONFIG="$ROOT_DIR/demos/${REPO_NAME}_commit.yaml"
+fi
+
+if [ -d "/migration" ]; then
+    MIGRATION_DATASET_DIR="/migration"
+else
+    MIGRATION_DATASET_DIR="$ROOT_DIR/migration"
 fi
 # Auto-detect Python: use container path if exists, otherwise find local python3
 if [ -x "/usr/local/bin/python" ]; then

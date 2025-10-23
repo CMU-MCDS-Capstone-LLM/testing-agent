@@ -21,10 +21,16 @@ fi
 # --- 1. Export API Keys ---
 if [ -n "${LITELLM_API_KEY:-}" ]; then
     export LITELLM_API_KEY
-    if [ -n "${API_BASE:-}" ]; then
+    if [ -z "${OPENAI_API_KEY:-}" ]; then
         export OPENAI_API_KEY="$LITELLM_API_KEY"
     fi
 fi
+
+if [ -n "${API_BASE:-}" ]; then
+    export OPENAI_API_BASE="$API_BASE"
+    export LITELLM_API_BASE="$API_BASE"
+fi
+
 echo "API keys exported."
 
 # Ensure the testing-agent sources are importable without packaging them
