@@ -103,7 +103,54 @@ SELECTOR_OUTPUT_DIR="repograph_runner/output"
 SELECTOR_OUTPUT_FILE="repograph_result.json"
 SELECTOR_OUTPUT_PATH="$(pwd)/${SELECTOR_OUTPUT_DIR}/${SELECTOR_OUTPUT_FILE}"
 
+MIG_RESOLVE_DIR="pymigbench_runner/output"
+MIG_RESOLVE_PATH="$(pwd)/${MIG_RESOLVE_DIR}/resolved_migration.yaml"
+
 mkdir -p "$(dirname "$SELECTOR_OUTPUT_PATH")"
+
+if [ -n "${MIGRATION_DATASET_DIR:-}" ]; then
+  if [ ! -d "$MIGRATION_DATASET_DIR" ]; then
+    echo "Migration dataset directory not found: $MIGRATION_DATASET_DIR" >&2
+    exit 1
+  fi
+
+  mkdir -p "$(dirname "$MIG_RESOLVE_PATH")"
+
+  if [ -z "${MIGRATION_COMMIT:-}" ] && [ -z "${MIGRATION_COMMIT_URL:-}" ]; then
+    echo "Set MIGRATION_COMMIT or MIGRATION_COMMIT_URL when MIGRATION_DATASET_DIR is provided." >&2
+    exit 1
+  fi
+
+  RESOLVE_ARGS=(
+    "$REPO_VENV_PYTHON" "$SCRIPT_DIR/pymigbench_runner/resolve_migration_from_dataset.py"
+    --dataset-dir "$MIGRATION_DATASET_DIR"
+    --output "$MIG_RESOLVE_PATH"
+  )
+
+  if [ -n "${MIGRATION_COMMIT:-}" ]; then
+    RESOLVE_ARGS+=(--commit "$MIGRATION_COMMIT")
+  fi
+
+  if [ -n "${MIGRATION_COMMIT_URL:-}" ]; then
+    RESOLVE_ARGS+=(--commit-url "$MIGRATION_COMMIT_URL")
+  fi
+
+  if [ -n "${MIGRATION_REPO:-}" ]; then
+    RESOLVE_ARGS+=(--repo "$MIGRATION_REPO")
+  fi
+
+  if ! "${RESOLVE_ARGS[@]}"; then
+    echo "Failed to resolve migration metadata via PyMigBench. Ensure pymigbench is installed." >&2
+    exit 1
+  fi
+
+  if [ ! -f "$MIG_RESOLVE_PATH" ]; then
+    echo "Expected resolved migration config not found: $MIG_RESOLVE_PATH" >&2
+    exit 1
+  fi
+
+  MIGRATION_CONFIG="$MIG_RESOLVE_PATH"
+fi
 
 if [ -z "${MIGRATION_CONFIG:-}" ] || [ ! -f "$MIGRATION_CONFIG" ]; then
   echo "MIGRATION_CONFIG not set or file missing: $MIGRATION_CONFIG" >&2
@@ -111,13 +158,12 @@ if [ -z "${MIGRATION_CONFIG:-}" ] || [ ! -f "$MIGRATION_CONFIG" ]; then
 fi
 
 SELECTOR_SCRIPT="$SCRIPT_DIR/repograph_runner/repograph_selector.py"
-
 "$REPO_VENV_PYTHON" "$SELECTOR_SCRIPT" \
---repo-path "$PROJECT_ROOT" \
---config "$MIGRATION_CONFIG" \
---env-python "$REPO_VENV_PYTHON" \
---extra-path "$REPO_SITE_PACKAGES" \
---output "$SELECTOR_OUTPUT_PATH"
+  --repo-path "$PROJECT_ROOT" \
+  --config "$MIGRATION_CONFIG" \
+  --env-python "$REPO_VENV_PYTHON" \
+  --extra-path "$REPO_SITE_PACKAGES" \
+  --output "$SELECTOR_OUTPUT_PATH"
 
 if [ ! -f "$SELECTOR_OUTPUT_PATH" ]; then
     echo "Selector failed to produce $SELECTOR_OUTPUT_PATH" >&2

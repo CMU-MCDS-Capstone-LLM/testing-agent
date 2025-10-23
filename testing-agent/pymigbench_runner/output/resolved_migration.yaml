@@ -1,0 +1,164 @@
+repo: adithyabsk/keep2roam
+commit: d340eea2fdedde8908334eda34325d058fc88282
+source: argparse
+target: click
+files:
+- path: convert.py
+  code_changes:
+  - line:
+      source:
+        expression: '3'
+        lines: frozenset({3})
+        min: 3
+        max: 3
+        is_contiguous: true
+      target:
+        expression: '6'
+        lines: frozenset({6})
+        min: 6
+        max: 6
+        is_contiguous: true
+      expression: '3:6'
+    source_apis:
+    - argparse
+    target_apis:
+    - click
+    source_program_elements:
+    - import
+    target_program_elements:
+    - import
+    cardinality: not applicable
+    properties: []
+    index: 0
+  - line:
+      source:
+        expression: 49-51
+        lines: frozenset({49, 50, 51})
+        min: 49
+        max: 51
+        is_contiguous: true
+      target:
+        expression: ''
+        lines: frozenset()
+        min: 0
+        max: 0
+        is_contiguous: true
+      expression: '49-51:'
+    source_apis:
+    - ArgumentParser
+    target_apis: []
+    source_program_elements:
+    - function call
+    target_program_elements: []
+    cardinality: one-to-zero
+    properties: []
+    index: 1
+  - line:
+      source:
+        expression: 52-56
+        lines: frozenset({52, 53, 54, 55, 56})
+        min: 52
+        max: 56
+        is_contiguous: true
+      target:
+        expression: '60'
+        lines: frozenset({60})
+        min: 60
+        max: 60
+        is_contiguous: true
+      expression: 52-56:60
+    source_apis:
+    - add_argument
+    target_apis:
+    - argument
+    - Path
+    source_program_elements:
+    - function call
+    target_program_elements:
+    - decorator
+    - function call
+    cardinality: one-to-many
+    properties:
+    - argument transformation
+    - element name change
+    - parameter addition to decorated function
+    index: 2
+  - line:
+      source:
+        expression: 57-61
+        lines: frozenset({57, 58, 59, 60, 61})
+        min: 57
+        max: 61
+        is_contiguous: true
+      target:
+        expression: '61'
+        lines: frozenset({61})
+        min: 61
+        max: 61
+        is_contiguous: true
+      expression: 57-61:61
+    source_apis:
+    - add_argument
+    target_apis:
+    - argument
+    - Path
+    source_program_elements:
+    - function call
+    target_program_elements:
+    - decorator
+    - function call
+    cardinality: one-to-many
+    properties:
+    - argument transformation
+    - element name change
+    - parameter addition to decorated function
+    index: 3
+  - line:
+      source:
+        expression: '62'
+        lines: frozenset({62})
+        min: 62
+        max: 62
+        is_contiguous: true
+      target:
+        expression: ''
+        lines: frozenset()
+        min: 0
+        max: 0
+        is_contiguous: true
+      expression: '62:'
+    source_apis:
+    - parse_args
+    target_apis: []
+    source_program_elements:
+    - function call
+    target_program_elements: []
+    cardinality: one-to-zero
+    properties: []
+    index: 4
+  - line:
+      source:
+        expression: ''
+        lines: frozenset()
+        min: 0
+        max: 0
+        is_contiguous: true
+      target:
+        expression: '59'
+        lines: frozenset({59})
+        min: 59
+        max: 59
+        is_contiguous: true
+      expression: :59
+    source_apis: []
+    target_apis:
+    - command
+    source_program_elements: []
+    target_program_elements:
+    - decorator
+    cardinality: zero-to-one
+    properties: []
+    index: 5
+domain: Utility
+pair_id: argparse__click
+commit_url: https://github.com/adithyabsk/keep2roam/commit/d340eea2
