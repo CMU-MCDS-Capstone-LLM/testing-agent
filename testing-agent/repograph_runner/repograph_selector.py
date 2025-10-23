@@ -19,19 +19,11 @@ import argparse
 import importlib.util
 import json
 import sys
+from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import yaml
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-PACKAGE_ROOT = PROJECT_ROOT / "lsp_repograph"
-
-for path in (PROJECT_ROOT, PACKAGE_ROOT):
-    path_str = str(path)
-    if path_str not in sys.path:
-        sys.path.insert(0, path_str)
 
 from lsp_repograph.core.multilspy_client import MultilspyLSPClient  # type: ignore[attr-defined]
 
@@ -156,10 +148,97 @@ def load_migration_config(path: Path) -> Dict[str, object]:
     return data
 
 
+def migration_to_mapping(migration: object) -> Dict[str, object]:
+    """Convert a PyMigBench migration object (dataclass / pydantic / dict) to a plain mapping."""
+
+    if isinstance(migration, dict):
+        return migration
+
+    if is_dataclass(migration):
+        return asdict(migration)
+
+    model_dump = getattr(migration, "model_dump", None)
+    if callable(model_dump):
+        return dict(model_dump())
+
+    attrs = getattr(migration, "__dict__", None)
+    if isinstance(attrs, dict):
+        return dict(attrs)
+
+    raise TypeError(f"Unsupported migration object type: {type(migration)!r}")
+
+
+def enrich_config_from_dataset(
+    config: Dict[str, object], dataset_dir: Path
+) -> Dict[str, object]:
+    """Use PyMigBench to populate missing/override migration fields from the dataset directory."""
+
+    if not dataset_dir.exists() or not dataset_dir.is_dir():
+        raise FileNotFoundError(f"dataset directory not found: {dataset_dir}")
+
+    try:
+        from pymigbench.database import Database  # type: ignore[import]
+    except ImportError as exc:  # pragma: no cover - dependency injected at runtime
+        raise RuntimeError(
+            "pymigbench must be installed to resolve migrations from the dataset directory"
+        ) from exc
+
+    database = Database.load_from_dir(dataset_dir)
+
+    commit = str(config.get("commit") or "").strip()
+    commit_url = str(config.get("commit_url") or "").strip()
+    repo = str(config.get("repo") or "").strip().lower()
+
+    migrations: List[Dict[str, object]] = []
+    for mig in database.migs():
+        try:
+            migrations.append(migration_to_mapping(mig))
+        except TypeError:
+            continue
+
+    match: Optional[Dict[str, object]] = None
+
+    if commit:
+        for mig in migrations:
+            if str(mig.get("commit") or "").strip() == commit:
+                match = mig
+                break
+
+    if match is None and commit_url:
+        for mig in migrations:
+            if str(mig.get("commit_url") or "").strip() == commit_url:
+                match = mig
+                break
+
+    if match is None and repo:
+        for mig in migrations:
+            mig_repo = str(mig.get("repo") or "").strip().lower()
+            if mig_repo == repo:
+                match = mig
+                break
+
+    if match is None:
+        key = commit or commit_url or repo or "<unknown>"
+        raise LookupError(
+            f"Could not find migration entry in dataset '{dataset_dir}' matching '{key}'"
+        )
+
+    # Override config values with authoritative data from the dataset
+    for field in ("source", "target", "domain", "files"):
+        if field in match:
+            config[field] = match[field]
+
+    return config
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="RepoGraph selector utility")
     parser.add_argument("--repo-path", required=True, help="Path to the repository under analysis")
     parser.add_argument("--config", required=True, help="Migration config YAML (e.g., PyMigBench entry)")
+    parser.add_argument(
+        "--dataset-dir",
+        help="Directory containing PyMigBench YAML files used to enrich migration metadata.",
+    )
     parser.add_argument("--env-python", help="Path to the interpreter for the target repo's virtualenv")
     parser.add_argument(
         "--extra-path",
@@ -185,6 +264,10 @@ def main() -> None:
         raise FileNotFoundError(f"config not found: {config_path}")
 
     migration_cfg = load_migration_config(config_path)
+
+    if args.dataset_dir:
+        dataset_dir = Path(args.dataset_dir).resolve()
+        migration_cfg = enrich_config_from_dataset(migration_cfg, dataset_dir)
 
     source_entry = migration_cfg.get("source")
     if isinstance(source_entry, dict):

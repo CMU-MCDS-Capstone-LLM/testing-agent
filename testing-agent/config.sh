@@ -16,19 +16,19 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # These variables make it easy to change the command-line arguments for cover-agent.
 REPO_NAME="keep2roam"
 # Auto-detect if running locally or in container
-if [ -d "/workspace/$REPO_NAME" ]; then
-    PROJECT_ROOT="/workspace/$REPO_NAME"
+if [ -d "/demos/$REPO_NAME" ]; then
+    PROJECT_ROOT="/demos/$REPO_NAME"
 else
-    PROJECT_ROOT="$ROOT_DIR/workspace/$REPO_NAME"
+    PROJECT_ROOT="$ROOT_DIR/demos/$REPO_NAME"
 fi
 CODE_COVERAGE_REPORT_PATH="$PROJECT_ROOT/.pytest_cache/coverage.xml"
 TEST_COMMAND="pytest"
 TEST_COMMAND_DIR="$PROJECT_ROOT/tests"
 COVERAGE_TYPE="cobertura"
 DESIRED_COVERAGE=90
-MAX_ITERATIONS=10
-MODEL="openai/gpt-4o"
-API_BASE="https://cmu.litellm.ai" 
+MAX_ITERATIONS=8
+MODEL="gpt-4o-2024-08-06"
+API_BASE="https://ai-gateway.andrew.cmu.edu/"
 ADDITIONAL_INSTRUCTIONS="
 Only mock external dependencies; never patch functions or classes defined inside the source file under test.
 Let the real implementation run; patch file, network, or database I/O only when necessary, and patch each target (for example, builtins.open) once per test.
@@ -41,12 +41,8 @@ Whenever you mock domain objects (Notes, etc.), set every attribute or method th
 
 Focus on uncovered lines from the latest coverage report. Skip tests that would only exercise code that already has non-zero hits.
 
-Coverage priorities for convert.py:
-  • Cover the open_note failure path by making NoteSchema().load raise, asserting SystemExit, and verifying that the printed output includes the failing Path.
-  • Cover the module entry guard by importing convert as convert_module, patching run_parser/convert, and calling convert_module.main().
-
-Generate normal (happy-path) scenarios first, but it is acceptable to hit the specific deterministic failure path described above when it is the only way to cover the remaining lines.
-Ensure each proposed test adds new line or branch coverage; otherwise, omit it.
+Generate normal (happy-path) scenarios first, but fulfil the mandatory exception-path test above whenever those lines are uncovered.
+Ensure each proposed test adds new line or branch coverage; skip any test that duplicates existing behavior.
 "
 
 # --- Environment and Output Setup ---
@@ -56,10 +52,16 @@ TEST_REQUIREMENTS_FILE=""
 OUTPUT_FILE="$TEST_COMMAND_DIR/testing_agent_output.txt"
 
 # --- LSP-Repograph Configuration ---
-if [ -f "/workspace/${REPO_NAME}_commit.yaml" ]; then
-    MIGRATION_CONFIG="/workspace/${REPO_NAME}_commit.yaml"
+if [ -f "/demos/${REPO_NAME}_commit.yaml" ]; then
+    MIGRATION_CONFIG="/demos/${REPO_NAME}_commit.yaml"
 else
-    MIGRATION_CONFIG="$ROOT_DIR/workspace/${REPO_NAME}_commit.yaml"
+    MIGRATION_CONFIG="$ROOT_DIR/demos/${REPO_NAME}_commit.yaml"
+fi
+
+if [ -d "/migration" ]; then
+    MIGRATION_DATASET_DIR="/migration"
+else
+    MIGRATION_DATASET_DIR="$ROOT_DIR/migration"
 fi
 # Auto-detect Python: use container path if exists, otherwise find local python3
 if [ -x "/usr/local/bin/python" ]; then

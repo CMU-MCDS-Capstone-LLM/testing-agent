@@ -99,12 +99,9 @@ class AICaller:
             completion_params.pop("max_tokens", None)  # Remove 'max_tokens' if present
 
         # API base exception for OpenAI Compatible, Ollama, and Hugging Face models
-        if (
-            "ollama" in self.model
-            or "huggingface" in self.model
-            or self.model.startswith("openai/")
-        ):
+        if self.api_base:
             completion_params["api_base"] = self.api_base
+            completion_params["base_url"] = self.api_base
 
         try:
             response = litellm.completion(**completion_params)

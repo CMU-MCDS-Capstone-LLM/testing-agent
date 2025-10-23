@@ -1,4 +1,10 @@
 #!/bin/bash
+
+# TODO
+# [run.sh change to python: import coveragent]
+# [config.sh change to yaml]
+
+
 # run.sh - Automates environment setup, test file generation, and code coverage analysis.
 #
 # Usage: ./run.sh
@@ -15,13 +21,25 @@ fi
 # --- 1. Export API Keys ---
 if [ -n "${LITELLM_API_KEY:-}" ]; then
     export LITELLM_API_KEY
-    if [ -n "${API_BASE:-}" ]; then
+    if [ -z "${OPENAI_API_KEY:-}" ]; then
         export OPENAI_API_KEY="$LITELLM_API_KEY"
     fi
 fi
+
+if [ -n "${API_BASE:-}" ]; then
+    export OPENAI_API_BASE="$API_BASE"
+    export LITELLM_API_BASE="$API_BASE"
+fi
+
 echo "API keys exported."
 
-# --- 2. Install Dependencies ---
+# Ensure the testing-agent sources are importable without packaging them
+case ":${PYTHONPATH:-}:" in
+  *":$SCRIPT_DIR:"*) ;;
+  *) export PYTHONPATH="$SCRIPT_DIR${PYTHONPATH:+:$PYTHONPATH}" ;;
+esac
+
+# --- 2. Install Dependencies [TODO] ---
 # 确认 REPO_VENV_PYTHON 有值且可执行
 if [ -z "${REPO_VENV_PYTHON:-}" ]; then
   if command -v python >/dev/null 2>&1; then
@@ -139,7 +157,12 @@ print(" ".join(str(root / fname) for fname in sorted(files)))
 PY
 )
 
-# --- 4. Create Test Folder and File & Run Coverage Analysis ---
+# --- 4. Create Test Folder and File & Run Coverage Analysis [TODO] ---
+# TODO
+# use additional file
+# do not match test file name
+# use lsp/ast to check which test file uses which src file, only keep those
+
 echo "Setting up test environment in $PROJECT_ROOT"
 
 # --- Build pytest command based on selector-derived arguments ---
@@ -319,7 +342,6 @@ if [ -n "$IMPORT_BLOCK" ] && ! grep -q "^# \[AUTO-IMPORTED FROM SOURCE\]" "$TEST
 else
     echo "No imports found to insert (or already inserted)."
 fi
-
 
     echo "Running cover-agent for source file: $SOURCE_PATH and test file: $TEST_FILE"
     echo "======================================" >> "$OUTPUT_FILE"
