@@ -1,23 +1,30 @@
-2025-10-22 16:48:09,543 - cover_agent.CoverAgent - INFO - Current Coverage: 27.78%
-2025-10-22 16:48:09,543 - cover_agent.CoverAgent - INFO - Desired Coverage: 90%
-2025-10-22 16:48:25,104 - cover_agent.CoverAgent - INFO - Current Coverage: 83.33%
-2025-10-22 16:48:25,104 - cover_agent.CoverAgent - INFO - Desired Coverage: 90%
-2025-10-22 16:48:31,257 - cover_agent.CoverAgent - INFO - Reached above target coverage of 90% (Current Coverage: 97.22%) in 1 iterations.
-2025-10-22 16:48:31,257 - cover_agent.CoverAgent - INFO - Total number of input tokens used for LLM model openai/gpt-4o: 5426
-2025-10-22 16:48:31,257 - cover_agent.CoverAgent - INFO - Total number of output tokens used for LLM model openai/gpt-4o: 1264
-in/Desktop/all/capstone/container/workspace/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
-2025-10-22 16:48:23,532 - cover_agent.UnitTestValidator - INFO - Test passed and coverage increased. Current coverage: 47.22%
-2025-10-22 16:48:23,532 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/workspace/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
-2025-10-22 16:48:23,818 - cover_agent.UnitTestValidator - INFO - Test passed and coverage increased. Current coverage: 61.11%
-2025-10-22 16:48:23,818 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/workspace/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
-2025-10-22 16:48:24,102 - cover_agent.UnitTestValidator - INFO - Test passed and coverage increased. Current coverage: 77.78%
-2025-10-22 16:48:24,103 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/workspace/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
-2025-10-22 16:48:24,797 - cover_agent.UnitTestValidator - INFO - Test passed and coverage increased. Current coverage: 83.33%
-2025-10-22 16:48:24,813 - cover_agent.UnitTestValidator - INFO - Running build/test command to generate coverage report: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/workspace/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
-2025-10-22 16:48:25,104 - cover_agent.UnitTestValidator - INFO - Initial coverage: 83.33%
-2025-10-22 16:48:30,309 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/workspace/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
-2025-10-22 16:48:30,621 - cover_agent.UnitTestValidator - INFO - Test passed and coverage increased. Current coverage: 97.22%
-2025-10-22 16:48:30,622 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/workspace/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
-2025-10-22 16:48:30,921 - cover_agent.UnitTestValidator - INFO - Test did not increase coverage. Rolling back.
-2025-10-22 16:48:30,925 - cover_agent.UnitTestValidator - INFO - Running build/test command to generate coverage report: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/workspace/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
-2025-10-22 16:48:31,256 - cover_agent.UnitTestValidator - INFO - Initial coverage: 97.22%
+2025-10-22 17:39:19,699 - cover_agent.CoverAgent - INFO - Current Coverage: 27.78%
+2025-10-22 17:39:19,699 - cover_agent.CoverAgent - INFO - Desired Coverage: 90%
+2025-10-22 17:39:40,906 - cover_agent.CoverAgent - INFO - Current Coverage: 69.44%
+2025-10-22 17:39:40,906 - cover_agent.CoverAgent - INFO - Desired Coverage: 90%
+2025-10-22 17:39:55,559 - cover_agent.CoverAgent - INFO - Current Coverage: 83.33%
+2025-10-22 17:39:55,559 - cover_agent.CoverAgent - INFO - Desired Coverage: 90%
+2025-10-22 17:40:03,462 - cover_agent.CoverAgent - INFO - Reached above target coverage of 90% (Current Coverage: 97.22%) in 2 iterations.
+2025-10-22 17:40:03,462 - cover_agent.CoverAgent - INFO - Total number of input tokens used for LLM model openai/gpt-4o: 12291
+2025-10-22 17:40:03,462 - cover_agent.CoverAgent - INFO - Total number of output tokens used for LLM model openai/gpt-4o: 2276
+estValidator - INFO - Test passed and coverage increased. Current coverage: 38.89%
+2025-10-22 17:39:34,541 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
+2025-10-22 17:39:35,244 - cover_agent.UnitTestValidator - INFO - Skipping a generated test that failed
+2025-10-22 17:39:39,712 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
+2025-10-22 17:39:40,192 - cover_agent.UnitTestValidator - INFO - Test passed and coverage increased. Current coverage: 52.78%
+2025-10-22 17:39:40,193 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
+2025-10-22 17:39:40,538 - cover_agent.UnitTestValidator - INFO - Test passed and coverage increased. Current coverage: 69.44%
+2025-10-22 17:39:40,549 - cover_agent.UnitTestValidator - INFO - Running build/test command to generate coverage report: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
+2025-10-22 17:39:40,905 - cover_agent.UnitTestValidator - INFO - Initial coverage: 69.44%
+2025-10-22 17:39:49,725 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
+2025-10-22 17:39:50,189 - cover_agent.UnitTestValidator - INFO - Skipping a generated test that failed
+2025-10-22 17:39:54,828 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
+2025-10-22 17:39:55,199 - cover_agent.UnitTestValidator - INFO - Test passed and coverage increased. Current coverage: 83.33%
+2025-10-22 17:39:55,207 - cover_agent.UnitTestValidator - INFO - Running build/test command to generate coverage report: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
+2025-10-22 17:39:55,559 - cover_agent.UnitTestValidator - INFO - Initial coverage: 83.33%
+2025-10-22 17:40:01,624 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
+2025-10-22 17:40:02,138 - cover_agent.UnitTestValidator - INFO - Test passed and coverage increased. Current coverage: 88.89%
+2025-10-22 17:40:02,140 - cover_agent.UnitTestValidator - INFO - Running test with the following command: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
+2025-10-22 17:40:02,546 - cover_agent.UnitTestValidator - INFO - Test passed and coverage increased. Current coverage: 97.22%
+2025-10-22 17:40:02,553 - cover_agent.UnitTestValidator - INFO - Running build/test command to generate coverage report: "/Users/shanrulin/Desktop/all/capstone/container/testing-agent/.venv/bin/python3 -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.pytest_cache/coverage.xml --cov-report=term -k "convert or test_convert""
+2025-10-22 17:40:03,461 - cover_agent.UnitTestValidator - INFO - Initial coverage: 97.22%

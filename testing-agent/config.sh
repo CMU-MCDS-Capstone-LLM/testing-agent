@@ -41,10 +41,6 @@ Whenever you mock domain objects (Notes, etc.), set every attribute or method th
 
 Focus on uncovered lines from the latest coverage report. Skip tests that would only exercise code that already has non-zero hits.
 
-Coverage priorities for convert.py:
-  1. If lines 18-20 (the open_note exception handler) remain uncovered, you MUST generate a test that triggers NoteSchema().load to raise, asserts SystemExit, and confirms the printed Path appears in stdout. Treat this as mandatory even though it is an error branch.
-  2. If the module entry glue (lines around main()) is still uncovered, import convert as convert_module, patch run_parser/convert, invoke convert_module.main(), and assert the helpers are called with the expected arguments. Do not create duplicate tests if this behavior is already covered in the current suite.
-
 Generate normal (happy-path) scenarios first, but fulfil the mandatory exception-path test above whenever those lines are uncovered.
 Ensure each proposed test adds new line or branch coverage; skip any test that duplicates existing behavior.
 "
