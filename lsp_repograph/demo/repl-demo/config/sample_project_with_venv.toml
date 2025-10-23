@@ -1,9 +1,0 @@
-[repo]
-path = "/home/eiger/CMU/2025_Fall/Capstone/workspace/playground/LSP-RepoGraph-demo/sample_project_with_venv"
-
-[lsp.initializationOptions.workspace]
-extraPaths = [
-    "/home/eiger/CMU/2025_Spring/11634_Capstone/playground/LSP-RepoGraph/demo/sample_project_with_venv/.venv/lib/python3.10/site-packages"
-]
-environmentPath = "/home/eiger/CMU/2025_Spring/11634_Capstone/playground/LSP-RepoGraph/demo/sample_project_with_venv/.venv/bin/python"
-
