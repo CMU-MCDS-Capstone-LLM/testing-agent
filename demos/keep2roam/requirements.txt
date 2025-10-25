@@ -1,4 +1,0 @@
-marshmallow==3.8.0
-click
-pyyaml
-git+https://github.com/CMU-MCDS-Capstone-LLM/LSP-Repograph.git@main#egg=lsp-repograph
