@@ -1,6 +1,7 @@
 import argparse
 import os
 from cover_agent.CoverAgent import CoverAgent
+from cover_agent.Runner import LocalRunner
 from cover_agent.version import __version__
 
 
@@ -141,7 +142,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    agent = CoverAgent(args)
+    agent = CoverAgent(args, runner=LocalRunner())
     agent.run()
 
 

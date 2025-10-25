@@ -2,9 +2,12 @@ import datetime
 import os
 import shutil
 import sys
-import wandb
+try:
+    import wandb  # type: ignore
+except ImportError:  # pragma: no cover - optional dependency
+    wandb = None
 
-from typing import List
+from typing import List, Optional
 
 from cover_agent.CustomLogger import CustomLogger
 from cover_agent.UnitTestGenerator import UnitTestGenerator
@@ -13,6 +16,7 @@ from cover_agent.UnitTestDB import UnitTestDB
 from cover_agent.AICaller import AICaller
 from cover_agent.AgentCompletionABC import AgentCompletionABC
 from cover_agent.DefaultAgentCompletion import DefaultAgentCompletion
+from cover_agent.Runner import Runner, LocalRunner
 
 
 class CoverAgent:
@@ -23,7 +27,12 @@ class CoverAgent:
     and tracks the progress of coverage improvements over multiple iterations.
     """
     
-    def __init__(self, args, agent_completion: AgentCompletionABC = None):
+    def __init__(
+        self,
+        args,
+        agent_completion: AgentCompletionABC = None,
+        runner: Optional[Runner] = None,
+    ):
         """
         Initialize the CoverAgent with configuration and set up test generation environment.
 
@@ -41,6 +50,7 @@ class CoverAgent:
         """
         self.args = args
         self.logger = CustomLogger.get_logger(__name__)
+        self.command_runner = runner or LocalRunner()
 
         self._validate_paths()
         self._duplicate_test_file()
@@ -127,6 +137,7 @@ class CoverAgent:
             num_attempts=args.run_tests_multiple_times,
             agent_completion=self.agent_completion,
             max_run_time=args.max_run_time,
+            runner=self.command_runner,
         )
 
     def _validate_paths(self):
@@ -190,12 +201,14 @@ class CoverAgent:
                   and initial coverage report.
         """
         # Check if user has exported the WANDS_API_KEY environment variable
-        if "WANDB_API_KEY" in os.environ:
+        if "WANDB_API_KEY" in os.environ and wandb is not None:
             # Initialize the Weights & Biases run
             wandb.login(key=os.environ["WANDB_API_KEY"])
             time_and_date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             run_name = f"{self.args.model}_" + time_and_date
             wandb.init(project="cover-agent", name=run_name)
+        elif "WANDB_API_KEY" in os.environ:
+            self.logger.warning("WANDB_API_KEY provided but wandb is not installed.")
 
         # Run initial test suite analysis
         self.test_validator.initial_test_suite_analysis()
@@ -286,7 +299,7 @@ class CoverAgent:
 
         # Generate report and cleanup
         self.test_db.dump_to_report(self.args.report_filepath)
-        if "WANDB_API_KEY" in os.environ:
+        if "WANDB_API_KEY" in os.environ and wandb is not None:
             wandb.finish()
 
     def log_coverage(self):

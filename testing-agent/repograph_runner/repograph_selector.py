@@ -20,7 +20,7 @@ import importlib.util
 import json
 import sys
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict, is_dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -35,7 +35,6 @@ class RepoGraphRequest:
 
     repo_path: Path
     migration_config: Path
-    dataset_dir: Optional[Path] = None
     env_python: Optional[str] = None
     extra_paths: Sequence[str] = ()
     workspace_symbols: Sequence[str] = ()
@@ -83,11 +82,6 @@ class LocalRepoGraphRunner(RepoGraphRunner):
 
         migration_cfg = load_migration_config(config_path)
 
-        dataset_dir: Optional[Path] = None
-        if request.dataset_dir:
-            dataset_dir = request.dataset_dir.resolve()
-            migration_cfg = enrich_config_from_dataset(migration_cfg, dataset_dir)
-
         source_entry = migration_cfg.get("source")
         if isinstance(source_entry, dict):
             source_module = source_entry.get("module")
@@ -132,15 +126,6 @@ class LocalRepoGraphRunner(RepoGraphRunner):
             source_qualpath=source_qualpath,
             library_consumers=library_consumers,
             workspace_callers=workspace_callers,
-        )
-
-
-class RemoteRepoGraphRunner(RepoGraphRunner):
-    """Placeholder for a remote implementation managed by the server team."""
-
-    def run(self, request: RepoGraphRequest) -> RepoGraphResult:
-        raise NotImplementedError(
-            "RemoteRepoGraphRunner should be implemented by the server integration team."
         )
 
 
@@ -257,104 +242,17 @@ def looks_like_test(path: str) -> bool:
 
 
 def load_migration_config(path: Path) -> Dict[str, object]:
-    """Parse a PyMigBench-style migration YAML and return its dictionary representation."""
+    """Parse a migration YAML and return its dictionary representation."""
     data = yaml.safe_load(path.read_text())
     if not isinstance(data, dict):
         raise ValueError(f"Cannot parse migration config at {path}")
     return data
 
 
-def migration_to_mapping(migration: object) -> Dict[str, object]:
-    """Convert a PyMigBench migration object (dataclass / pydantic / dict) to a plain mapping."""
-
-    if isinstance(migration, dict):
-        return migration
-
-    if is_dataclass(migration):
-        return asdict(migration)
-
-    model_dump = getattr(migration, "model_dump", None)
-    if callable(model_dump):
-        return dict(model_dump())
-
-    attrs = getattr(migration, "__dict__", None)
-    if isinstance(attrs, dict):
-        return dict(attrs)
-
-    raise TypeError(f"Unsupported migration object type: {type(migration)!r}")
-
-
-def enrich_config_from_dataset(
-    config: Dict[str, object], dataset_dir: Path
-) -> Dict[str, object]:
-    """Use PyMigBench to populate missing/override migration fields from the dataset directory."""
-
-    if not dataset_dir.exists() or not dataset_dir.is_dir():
-        raise FileNotFoundError(f"dataset directory not found: {dataset_dir}")
-
-    try:
-        from pymigbench.database import Database  # type: ignore[import]
-    except ImportError as exc:  # pragma: no cover - dependency injected at runtime
-        raise RuntimeError(
-            "pymigbench must be installed to resolve migrations from the dataset directory"
-        ) from exc
-
-    database = Database.load_from_dir(dataset_dir)
-
-    commit = str(config.get("commit") or "").strip()
-    commit_url = str(config.get("commit_url") or "").strip()
-    repo = str(config.get("repo") or "").strip().lower()
-
-    migrations: List[Dict[str, object]] = []
-    for mig in database.migs():
-        try:
-            migrations.append(migration_to_mapping(mig))
-        except TypeError:
-            continue
-
-    match: Optional[Dict[str, object]] = None
-
-    if commit:
-        for mig in migrations:
-            if str(mig.get("commit") or "").strip() == commit:
-                match = mig
-                break
-
-    if match is None and commit_url:
-        for mig in migrations:
-            if str(mig.get("commit_url") or "").strip() == commit_url:
-                match = mig
-                break
-
-    if match is None and repo:
-        for mig in migrations:
-            mig_repo = str(mig.get("repo") or "").strip().lower()
-            if mig_repo == repo:
-                match = mig
-                break
-
-    if match is None:
-        key = commit or commit_url or repo or "<unknown>"
-        raise LookupError(
-            f"Could not find migration entry in dataset '{dataset_dir}' matching '{key}'"
-        )
-
-    # Override config values with authoritative data from the dataset
-    for field in ("source", "target", "domain", "files"):
-        if field in match:
-            config[field] = match[field]
-
-    return config
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="RepoGraph selector utility")
     parser.add_argument("--repo-path", required=True, help="Path to the repository under analysis")
     parser.add_argument("--config", required=True, help="Migration config YAML (e.g., PyMigBench entry)")
-    parser.add_argument(
-        "--dataset-dir",
-        help="Directory containing PyMigBench YAML files used to enrich migration metadata.",
-    )
     parser.add_argument("--env-python", help="Path to the interpreter for the target repo's virtualenv")
     parser.add_argument(
         "--extra-path",
@@ -374,7 +272,6 @@ def main() -> None:
     request = RepoGraphRequest(
         repo_path=Path(args.repo_path),
         migration_config=Path(args.config),
-        dataset_dir=Path(args.dataset_dir) if args.dataset_dir else None,
         env_python=args.env_python,
         extra_paths=tuple(args.extra_path),
         workspace_symbols=tuple(args.workspace_symbol),
