@@ -19,13 +19,129 @@ import argparse
 import importlib.util
 import json
 import sys
-from dataclasses import asdict, is_dataclass
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, asdict, is_dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import yaml
 
 from lsp_repograph.core.multilspy_client import MultilspyLSPClient  # type: ignore[attr-defined]
+
+
+@dataclass
+class RepoGraphRequest:
+    """Input parameters required to execute a RepoGraph query."""
+
+    repo_path: Path
+    migration_config: Path
+    dataset_dir: Optional[Path] = None
+    env_python: Optional[str] = None
+    extra_paths: Sequence[str] = ()
+    workspace_symbols: Sequence[str] = ()
+
+
+@dataclass
+class RepoGraphResult:
+    """Structured output produced by a RepoGraph runner."""
+
+    source_module: str
+    source_qualpath: Optional[str]
+    library_consumers: Dict[str, object]
+    workspace_callers: Dict[str, Dict[str, object]]
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "source": {
+                "module": self.source_module,
+                "qualpath": self.source_qualpath,
+            },
+            "library_consumers": self.library_consumers,
+            "workspace_callers": self.workspace_callers,
+        }
+
+
+class RepoGraphRunner(ABC):
+    """Abstract interface for executing RepoGraph in different environments."""
+
+    @abstractmethod
+    def run(self, request: RepoGraphRequest) -> RepoGraphResult:
+        """Execute RepoGraph and return its structured result."""
+
+
+class LocalRepoGraphRunner(RepoGraphRunner):
+    """Run RepoGraph against a local checkout using the host interpreter."""
+
+    def run(self, request: RepoGraphRequest) -> RepoGraphResult:
+        repo_root = request.repo_path.resolve()
+        config_path = request.migration_config.resolve()
+
+        if not repo_root.exists():
+            raise FileNotFoundError(f"repo_path not found: {repo_root}")
+        if not config_path.exists():
+            raise FileNotFoundError(f"config not found: {config_path}")
+
+        migration_cfg = load_migration_config(config_path)
+
+        dataset_dir: Optional[Path] = None
+        if request.dataset_dir:
+            dataset_dir = request.dataset_dir.resolve()
+            migration_cfg = enrich_config_from_dataset(migration_cfg, dataset_dir)
+
+        source_entry = migration_cfg.get("source")
+        if isinstance(source_entry, dict):
+            source_module = source_entry.get("module")
+            source_qualpath = source_entry.get("qualpath")
+        else:
+            source_symbol = str(source_entry)
+            source_module, source_qualpath = guess_module_and_qualpath(
+                source_symbol, repo_root
+            )
+
+        if not source_module:
+            raise ValueError("Migration config must define a source module or symbol")
+
+        custom_init = build_custom_init(request.env_python, request.extra_paths)
+        client = MultilspyLSPClient(str(repo_root), custom_init_params=custom_init)
+
+        try:
+            library_refs = client.find_refs_by_fqn(
+                module=source_module, qualpath=source_qualpath
+            )
+            library_consumers = format_references(repo_root, library_refs)
+
+            workspace_callers: Dict[str, Dict[str, object]] = {}
+            for sym in request.workspace_symbols:
+                if ":" in sym:
+                    module_part, qualpath_part = sym.split(":", 1)
+                    qualpath_part = qualpath_part or None
+                else:
+                    module_part, qualpath_part = guess_module_and_qualpath(sym, repo_root)
+
+                refs = client.find_refs_by_fqn(
+                    module=module_part, qualpath=qualpath_part
+                )
+                key = f"{module_part}:{qualpath_part or ''}"
+                workspace_callers[key] = format_references(repo_root, refs)
+
+        finally:
+            client.shutdown()
+
+        return RepoGraphResult(
+            source_module=source_module,
+            source_qualpath=source_qualpath,
+            library_consumers=library_consumers,
+            workspace_callers=workspace_callers,
+        )
+
+
+class RemoteRepoGraphRunner(RepoGraphRunner):
+    """Placeholder for a remote implementation managed by the server team."""
+
+    def run(self, request: RepoGraphRequest) -> RepoGraphResult:
+        raise NotImplementedError(
+            "RemoteRepoGraphRunner should be implemented by the server integration team."
+        )
 
 
 def build_custom_init(
@@ -255,61 +371,17 @@ def main() -> None:
     parser.add_argument("--output", help="If provided, write JSON result to this path; otherwise print to stdout")
     args = parser.parse_args()
 
-    repo_root = Path(args.repo_path).resolve()
-    config_path = Path(args.config).resolve()
+    request = RepoGraphRequest(
+        repo_path=Path(args.repo_path),
+        migration_config=Path(args.config),
+        dataset_dir=Path(args.dataset_dir) if args.dataset_dir else None,
+        env_python=args.env_python,
+        extra_paths=tuple(args.extra_path),
+        workspace_symbols=tuple(args.workspace_symbol),
+    )
 
-    if not repo_root.exists():
-        raise FileNotFoundError(f"repo_path not found: {repo_root}")
-    if not config_path.exists():
-        raise FileNotFoundError(f"config not found: {config_path}")
-
-    migration_cfg = load_migration_config(config_path)
-
-    if args.dataset_dir:
-        dataset_dir = Path(args.dataset_dir).resolve()
-        migration_cfg = enrich_config_from_dataset(migration_cfg, dataset_dir)
-
-    source_entry = migration_cfg.get("source")
-    if isinstance(source_entry, dict):
-        source_module = source_entry.get("module")
-        source_qualpath = source_entry.get("qualpath")
-    else:
-        source_symbol = str(source_entry)
-        source_module, source_qualpath = guess_module_and_qualpath(source_symbol, repo_root)
-
-    if not source_module:
-        raise ValueError("Migration config must define a source module or symbol")
-
-    custom_init = build_custom_init(args.env_python, args.extra_path)
-    client = MultilspyLSPClient(str(repo_root), custom_init_params=custom_init)
-
-    try:
-        # 1) Find every file that references the source symbol
-        library_refs = client.find_refs_by_fqn(module=source_module, qualpath=source_qualpath)
-        library_consumers = format_references(repo_root, library_refs)
-
-        result = {
-            "source": {"module": source_module, "qualpath": source_qualpath},
-            "library_consumers": library_consumers,
-            "workspace_callers": {},
-        }
-
-        # 2) For each requested workspace symbol, resolve its references as well
-        for sym in args.workspace_symbol:
-            if ":" in sym:
-                module_part, qualpath_part = sym.split(":", 1)
-                qualpath_part = qualpath_part or None
-            else:
-                module_part, qualpath_part = guess_module_and_qualpath(sym, repo_root)
-
-            refs = client.find_refs_by_fqn(module=module_part, qualpath=qualpath_part)
-            key = f"{module_part}:{qualpath_part or ''}"
-            result["workspace_callers"][key] = format_references(repo_root, refs)
-
-    finally:
-        client.shutdown()
-
-    payload = json.dumps(result, indent=2, ensure_ascii=False)
+    result = LocalRepoGraphRunner().run(request)
+    payload = json.dumps(result.to_dict(), indent=2, ensure_ascii=False)
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -6,12 +6,13 @@ import os
 import re
 
 from diff_cover.diff_cover_tool import main as diff_cover_main
+from typing import Optional
 
 from cover_agent.AgentCompletionABC import AgentCompletionABC
 from cover_agent.CoverageProcessor import CoverageProcessor
 from cover_agent.CustomLogger import CustomLogger
 from cover_agent.FilePreprocessor import FilePreprocessor
-from cover_agent.Runner import Runner
+from cover_agent.Runner import CommandResult, LocalRunner, Runner
 from cover_agent.settings.config_loader import get_settings
 from cover_agent.utils import load_yaml
 
@@ -36,6 +37,7 @@ class UnitTestValidator:
         diff_coverage: bool = False,
         comparison_branch: str = "main",
         num_attempts: int = 1,
+        runner: Optional[Runner] = None,
     ):
         """
         Initialize the UnitTestValidator class with the provided parameters.
@@ -57,6 +59,7 @@ class UnitTestValidator:
             use_report_coverage_feature_flag (bool, optional): Setting this to True considers the coverage of all the files in the coverage report.
                                                                This means we consider a test as good if it increases coverage for a different
                                                                file other than the source file. Defaults to False.
+            runner (Runner, optional): Command execution backend. Defaults to :class:`LocalRunner`.
 
         Returns:
             None
@@ -84,6 +87,7 @@ class UnitTestValidator:
         self.num_attempts = num_attempts
         self.agent_completion = agent_completion
         self.max_run_time = max_run_time
+        self.command_runner = runner or LocalRunner()
 
         # Get the logger instance from CustomLogger
         self.logger = CustomLogger.get_logger(__name__)
@@ -294,11 +298,15 @@ class UnitTestValidator:
         self.logger.info(
             f'Running build/test command to generate coverage report: "{self.test_command}"'
         )
-        stdout, stderr, exit_code, time_of_test_command = Runner.run_command(
+        coverage_result: CommandResult = self.command_runner.run_command(
             command=self.test_command,
             max_run_time=self.max_run_time,
             cwd=self.test_command_dir,
         )
+        stdout = coverage_result.stdout
+        stderr = coverage_result.stderr
+        exit_code = coverage_result.exit_code
+        time_of_test_command = coverage_result.command_start_time
         assert (
             exit_code == 0
         ), f'Fatal: Error running test command. Are you sure the command is correct? "{self.test_command}"\nExit code {exit_code}. \nStdout: \n{stdout} \nStderr: \n{stderr}'
@@ -476,17 +484,23 @@ class UnitTestValidator:
                     test_file.flush()
 
                 # Step 2: Run the test using the Runner class
+                stdout = ""
+                stderr = ""
+                exit_code = 0
+                time_of_test_command = None
                 for i in range(self.num_attempts):
                     self.logger.info(
                         f'Running test with the following command: "{self.test_command}"'
                     )
-                    stdout, stderr, exit_code, time_of_test_command = (
-                        Runner.run_command(
-                            command=self.test_command,
-                            cwd=self.test_command_dir,
-                            max_run_time=self.max_run_time,
-                        )
+                    command_result = self.command_runner.run_command(
+                        command=self.test_command,
+                        cwd=self.test_command_dir,
+                        max_run_time=self.max_run_time,
                     )
+                    stdout = command_result.stdout
+                    stderr = command_result.stderr
+                    exit_code = command_result.exit_code
+                    time_of_test_command = command_result.command_start_time
                     if exit_code != 0:
                         break
 
