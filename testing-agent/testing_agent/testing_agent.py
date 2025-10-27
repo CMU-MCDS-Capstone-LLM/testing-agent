@@ -81,7 +81,8 @@ class TestingAgent:
         included_files = self._collect_workspace_includes(repograph_result)
         source_files = self._collect_source_files(repograph_result)
 
-        self._prepare_output_file()
+        if self.config.html_report_path:
+            self._prepare_html_report()
 
         for source_rel in source_files:
             self._process_source_file(
@@ -90,10 +91,13 @@ class TestingAgent:
                 test_command=test_command,
             )
 
-        self.logger.info(
-            "All cover-agent tasks completed. Full output is available in %s",
-            self.config.output_file,
-        )
+        if self.config.html_report_path:
+            self.logger.info(
+                "All cover-agent tasks completed. HTML report saved to %s",
+                self.config.html_report_path,
+            )
+        else:
+            self.logger.info("All cover-agent tasks completed. HTML report generation disabled.")
 
     # ------------------------------------------------------------------
     # Environment preparation
@@ -123,7 +127,8 @@ class TestingAgent:
 
     def _ensure_directories(self) -> None:
         self.config.test_command_dir.mkdir(parents=True, exist_ok=True)
-        self.config.output_file.parent.mkdir(parents=True, exist_ok=True)
+        if self.config.html_report_path:
+            self.config.html_report_path.parent.mkdir(parents=True, exist_ok=True)
         self.config.code_coverage_report_path.parent.mkdir(parents=True, exist_ok=True)
         self.config.selector_output_path.parent.mkdir(parents=True, exist_ok=True)
         self._ensure_conftest()
@@ -571,7 +576,7 @@ class TestingAgent:
             test_command_dir=str(self.config.test_command_dir),
             included_files=[str(path) for path in included_files] if included_files else [],
             coverage_type=self.config.coverage_type,
-            report_filepath=str(self.config.output_file),
+            report_filepath=str(self.config.html_report_path) if self.config.html_report_path else "",
             desired_coverage=self.config.desired_coverage,
             max_iterations=self.config.max_iterations,
             max_run_time=self.config.max_run_time,
@@ -588,8 +593,11 @@ class TestingAgent:
         )
 
         divider = "=" * 38
-        with self.config.output_file.open("a", encoding="utf-8") as handle:
-            handle.write(f"{divider}\nProcessing: {source_path}\nTest file: {test_file}\n{divider}\n")
+        if self.config.html_report_path:
+            with self.config.html_report_path.open("a", encoding="utf-8") as handle:
+                handle.write(
+                    f"{divider}\nProcessing: {source_path}\nTest file: {test_file}\n{divider}\n"
+                )
 
         try:
             agent = CoverAgent(args, runner=self.test_executor)
@@ -601,15 +609,18 @@ class TestingAgent:
             self.logger.error("Cover-agent failed for %s: %s", source_path, exc)
             self.logger.debug("Traceback:\n%s", traceback.format_exc())
 
-        with self.config.output_file.open("a", encoding="utf-8") as handle:
-            handle.write(status_message + "\n")
-            handle.write("-" * 38 + "\n\n")
+        if self.config.html_report_path:
+            with self.config.html_report_path.open("a", encoding="utf-8") as handle:
+                handle.write(status_message + "\n")
+                handle.write("-" * 38 + "\n\n")
 
     # ------------------------------------------------------------------
     # Utility helpers
     # ------------------------------------------------------------------
-    def _prepare_output_file(self) -> None:
-        self.config.output_file.write_text("", encoding="utf-8")
+    def _prepare_html_report(self) -> None:
+        if not self.config.html_report_path:
+            return
+        self.config.html_report_path.write_text("", encoding="utf-8")
 
     def _ensure_conftest(self) -> None:
         conftest_path = (self.config.test_command_dir / "conftest.py").resolve()

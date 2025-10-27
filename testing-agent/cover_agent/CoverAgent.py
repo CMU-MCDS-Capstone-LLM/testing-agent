@@ -298,7 +298,8 @@ class CoverAgent:
         )
 
         # Generate report and cleanup
-        self.test_db.dump_to_report(self.args.report_filepath)
+        if getattr(self.args, "report_filepath", ""):
+            self.test_db.dump_to_report(self.args.report_filepath)
         if "WANDB_API_KEY" in os.environ and wandb is not None:
             wandb.finish()
 

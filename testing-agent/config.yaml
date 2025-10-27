@@ -32,7 +32,8 @@ additional_instructions: "Only mock external dependencies; never patch functions
 repo_requirements_file: requirements.txt
 install_repo_deps_without_deps: false
 test_requirements_file: tests/requirements.txt
-output_file: tests/testing_agent_output.txt
+html_report_path: null
+log_file: logs/testing_agent.log
 migration:
   source: argparse
   workspace_symbols: []

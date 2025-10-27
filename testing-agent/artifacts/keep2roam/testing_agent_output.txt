@@ -1,0 +1,111 @@
+[INFO] Starting testing agent for repo 'keep2roam'
+[INFO] Created /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests/conftest.py
+[INFO] Upgrading pip tooling
+[INFO] Installing repo requirements from /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/requirements.txt
+[INFO] RepoGraph output written to /Users/shanrulin/Desktop/all/capstone/container/testing-agent/repograph_runner/output/repograph_result.json
+[INFO] Using pytest command: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/bin/python -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/testing-agent/artifacts/keep2roam/coverage.xml --cov-report=term -k 'convert or test_convert'
+[INFO] Processing source file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py
+[INFO] Created new test file /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests/test_additional.py
+[INFO] Inserted import block into /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests/test_additional.py
+[INFO] Running cover-agent for source /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py
+======================================
+Processing: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py
+Test file: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests/test_additional.py
+======================================
+[INFO] 
+LiteLLM completion() model= gpt-4o-2024-08-06; provider = openai
+Streaming results from LLM model...
+```yaml
+language: python
+testing_framework: pytest
+number_of_tests: 1
+test_headers_indentation: 0
+```[INFO] 
+LiteLLM completion() model= gpt-4o-2024-08-06; provider = openai
+
+
+Streaming results from LLM model...
+```yaml
+language: python
+testing_framework: pytest
+number_of_tests: 1
+relevant_line_number_to_insert_tests_after: 10
+relevant_line_number_to_insert_imports_after: 5
+```
+
+2025-10-26 22:20:37,373 - cover_agent.UnitTestValidator - INFO - Running build/test command to generate coverage report: "/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/bin/python -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/testing-agent/artifacts/keep2roam/coverage.xml --cov-report=term -k 'convert or test_convert'"
+[ERROR] Cover-agent failed for /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/convert.py: Fatal: Error running test command. Are you sure the command is correct? "/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/bin/python -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/testing-agent/artifacts/keep2roam/coverage.xml --cov-report=term -k 'convert or test_convert'"
+Exit code 5. 
+Stdout: 
+============================= test session starts ==============================
+platform darwin -- Python 3.11.6, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, cov-7.0.0
+collected 1 item / 1 deselected / 0 selected
+
+WARNING: Failed to generate report: No data to report.
+
+
+=============================== warnings summary ===============================
+../.venv/lib/python3.11/site-packages/coverage/core.py:93
+  /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/lib/python3.11/site-packages/coverage/core.py:93: CoverageWarning: Couldn't import C tracer: No module named 'coverage.tracer' (no-ctracer); see https://coverage.readthedocs.io/en/7.11.0/messages.html#warning-no-ctracer
+    warn(f"Couldn't import C tracer: {IMPORT_ERROR}", slug="no-ctracer", once=True)
+
+../.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.11.6-final-0 _______________
+
+====================== 1 deselected, 2 warnings in 0.14s =======================
+ 
+Stderr: 
+/bin/bash: deactivate: command not found
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/lib/python3.11/site-packages/coverage/inorout.py:521: CoverageWarning: Module convert was never imported. (module-not-imported); see https://coverage.readthedocs.io/en/7.11.0/messages.html#warning-module-not-imported
+  self.warn(f"Module {pkg} was never imported.", slug="module-not-imported")
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/lib/python3.11/site-packages/coverage/control.py:946: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.11.0/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+/home/appuser/repo/.venv/lib/python3.11/site-packages/pytest_cov/plugin.py:363: CovReportWarning: Failed to generate report: No data to report.
+
+
+Error: Fatal: Error running test command. Are you sure the command is correct? "/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/bin/python -m pytest --cov=convert --cov-report=xml:/Users/shanrulin/Desktop/all/capstone/container/testing-agent/artifacts/keep2roam/coverage.xml --cov-report=term -k 'convert or test_convert'"
+Exit code 5. 
+Stdout: 
+============================= test session starts ==============================
+platform darwin -- Python 3.11.6, pytest-8.4.2, pluggy-1.6.0
+rootdir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests
+plugins: mock-3.15.1, cov-7.0.0
+collected 1 item / 1 deselected / 0 selected
+
+WARNING: Failed to generate report: No data to report.
+
+
+=============================== warnings summary ===============================
+../.venv/lib/python3.11/site-packages/coverage/core.py:93
+  /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/lib/python3.11/site-packages/coverage/core.py:93: CoverageWarning: Couldn't import C tracer: No module named 'coverage.tracer' (no-ctracer); see https://coverage.readthedocs.io/en/7.11.0/messages.html#warning-no-ctracer
+    warn(f"Couldn't import C tracer: {IMPORT_ERROR}", slug="no-ctracer", once=True)
+
+../.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17
+  /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/lib/python3.11/site-packages/marshmallow/__init__.py:17: DeprecationWarning: distutils Version classes are deprecated. Use packaging.version instead.
+    __version_info__ = tuple(LooseVersion(__version__).version)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.11.6-final-0 _______________
+
+====================== 1 deselected, 2 warnings in 0.14s =======================
+ 
+Stderr: 
+/bin/bash: deactivate: command not found
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/lib/python3.11/site-packages/coverage/inorout.py:521: CoverageWarning: Module convert was never imported. (module-not-imported); see https://coverage.readthedocs.io/en/7.11.0/messages.html#warning-module-not-imported
+  self.warn(f"Module {pkg} was never imported.", slug="module-not-imported")
+/Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/.venv/lib/python3.11/site-packages/coverage/control.py:946: CoverageWarning: No data was collected. (no-data-collected); see https://coverage.readthedocs.io/en/7.11.0/messages.html#warning-no-data-collected
+  self._warn("No data was collected.", slug="no-data-collected")
+/home/appuser/repo/.venv/lib/python3.11/site-packages/pytest_cov/plugin.py:363: CovReportWarning: Failed to generate report: No data to report.
+
+
+--------------------------------------
+
+[INFO] All cover-agent tasks completed. Full output is available in /Users/shanrulin/Desktop/all/capstone/container/testing-agent/artifacts/keep2roam/testing_agent_output.txt

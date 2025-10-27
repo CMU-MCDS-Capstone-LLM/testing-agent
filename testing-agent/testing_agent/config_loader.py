@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from shutil import which
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
+import warnings
 
 import yaml
 import sys
@@ -52,7 +53,7 @@ class TestingAgentConfig:
     repo_requirements_file: Optional[Path]
     install_repo_deps_without_deps: bool
     test_requirements_file: Optional[Path]
-    output_file: Path
+    html_report_path: Optional[Path]
     migration: Dict[str, object]
     repo_venv_python: Path
     pytest_cov_target: str
@@ -65,6 +66,7 @@ class TestingAgentConfig:
     run_each_test_separately: bool
     repo_env_pre_commands: List[str]
     repo_env_environment: Dict[str, str]
+    log_file: Path
     config_path: Path
 
     @classmethod
@@ -129,8 +131,24 @@ class TestingAgentConfig:
         if test_requirements_file and not test_requirements_file.exists():
             test_requirements_file = None
 
-        output_rel = raw.get("output_file", "tests/testing_agent_output.txt")
-        output_file = (project_root / output_rel).resolve()
+        html_report_path: Optional[Path]
+        if "html_report_path" in raw or "output_file" in raw:
+            selected_rel = raw.get("html_report_path")
+            if selected_rel is None and "output_file" in raw:
+                legacy_rel = raw.get("output_file")
+                if legacy_rel is not None:
+                    warnings.warn(
+                        "`output_file` is deprecated; use `html_report_path` instead.",
+                        DeprecationWarning,
+                    )
+                selected_rel = legacy_rel
+            if selected_rel:
+                html_report_path = (project_root / selected_rel).resolve()
+            else:
+                html_report_path = None
+        else:
+            default_output_rel = "tests/testing_agent_report.html"
+            html_report_path = (project_root / default_output_rel).resolve()
 
         migration_data = raw.get("migration")
         if not isinstance(migration_data, dict):
@@ -186,6 +204,13 @@ class TestingAgentConfig:
             for key, value in (raw.get("repo_env_environment") or {}).items()
         }
 
+        log_file_rel = raw.get("log_file")
+        if log_file_rel:
+            log_file = _as_path(log_file_rel, base_dir)
+        else:
+            log_file = base_dir / "run.log"
+        log_file = log_file.resolve()
+
         return cls(
             repo_name=repo_name,
             project_root=project_root,
@@ -202,7 +227,7 @@ class TestingAgentConfig:
             repo_requirements_file=repo_requirements_file,
             install_repo_deps_without_deps=install_repo_deps_without_deps,
             test_requirements_file=test_requirements_file,
-            output_file=output_file,
+            html_report_path=html_report_path,
             migration=migration_data,
             repo_venv_python=repo_venv_python,
             pytest_cov_target=pytest_cov_target or "",
@@ -215,5 +240,6 @@ class TestingAgentConfig:
             run_each_test_separately=run_each_test_separately,
             repo_env_pre_commands=repo_env_pre_commands,
             repo_env_environment=repo_env_environment,
+            log_file=log_file,
             config_path=config_path,
         )

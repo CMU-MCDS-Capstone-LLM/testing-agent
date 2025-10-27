@@ -27,12 +27,23 @@ def _parse_args() -> argparse.Namespace:
 def main() -> None:
     args = _parse_args()
 
-    logging.basicConfig(
-        level=getattr(logging, args.log_level.upper(), logging.INFO),
-        format="[%(levelname)s] %(message)s",
-    )
-
     config = TestingAgentConfig.from_yaml(Path(args.config))
+
+    log_format = "[%(levelname)s] %(message)s"
+    log_level = getattr(logging, args.log_level.upper(), logging.INFO)
+    handlers = []
+
+    if config.log_file:
+        config.log_file.parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(config.log_file, mode="w", encoding="utf-8")
+        file_handler.setFormatter(logging.Formatter(log_format))
+        handlers.append(file_handler)
+
+    if handlers:
+        logging.basicConfig(level=log_level, handlers=handlers)
+    else:
+        logging.basicConfig(level=log_level, format=log_format)
+
     agent = TestingAgent(config=config)
     agent.run()
 
