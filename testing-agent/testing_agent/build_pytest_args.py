@@ -103,6 +103,9 @@ def build_arguments(repo_root: Path, selected: Set[Path]) -> Tuple[Set[str], Set
         cov_targets.add(module)
         include_tokens.update(discover_test_tokens(repo_root, rel_path))
 
+    # Always include the aggregated test file token so pytest -k selects it.
+    include_tokens.add("test_additional")
+
     include_tokens = {token for token in include_tokens if token}
     cov_targets = {target for target in cov_targets if target}
     return cov_targets, include_tokens

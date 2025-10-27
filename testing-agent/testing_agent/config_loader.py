@@ -105,17 +105,15 @@ class TestingAgentConfig:
         test_command_dir_rel = raw.get("test_command_dir", "tests")
         test_command_dir = (project_root / test_command_dir_rel).resolve()
 
+
         code_coverage_rel = raw.get("code_coverage_report_path")
         code_coverage_rel = _expand_repo_placeholder(code_coverage_rel, repo_name)
         if not code_coverage_rel:
             coverage_candidate = Path("artifacts") / repo_name / "coverage.xml"
         else:
             coverage_candidate = Path(code_coverage_rel)
-        coverage_root = base_dir
-        if coverage_candidate.parts and coverage_candidate.parts[0] == repo_name:
-            coverage_candidate = Path("artifacts") / coverage_candidate
         if not coverage_candidate.is_absolute():
-            code_coverage_report_path = (coverage_root / coverage_candidate).resolve()
+            code_coverage_report_path = (base_dir / coverage_candidate).resolve()
         else:
             code_coverage_report_path = coverage_candidate.resolve()
 
@@ -176,14 +174,14 @@ class TestingAgentConfig:
             if selected_rel:
                 selected_path = Path(selected_rel)
                 if not selected_path.is_absolute():
-                    html_report_path = (project_root / selected_path).resolve()
+                    html_report_path = (base_dir / selected_path).resolve()
                 else:
                     html_report_path = selected_path.resolve()
             else:
                 html_report_path = None
         else:
-            default_output_rel = Path(test_command_dir_rel) / "testing_agent_report.html"
-            html_report_path = (project_root / default_output_rel).resolve()
+            default_output_rel = Path("artifacts") / repo_name / "testing_agent_report.html"
+            html_report_path = (base_dir / default_output_rel).resolve()
 
         migration_data = raw.get("migration")
         if not isinstance(migration_data, dict):
