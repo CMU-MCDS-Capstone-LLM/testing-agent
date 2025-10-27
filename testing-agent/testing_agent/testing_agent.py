@@ -131,6 +131,8 @@ class TestingAgent:
             self.config.html_report_path.parent.mkdir(parents=True, exist_ok=True)
         self.config.code_coverage_report_path.parent.mkdir(parents=True, exist_ok=True)
         self.config.selector_output_path.parent.mkdir(parents=True, exist_ok=True)
+        if self.config.log_file:
+            self.config.log_file.parent.mkdir(parents=True, exist_ok=True)
         self._ensure_conftest()
 
     def _install_dependencies(self) -> None:

@@ -28,6 +28,14 @@ def _first_existing_path(candidates: Iterable[str | Path], base: Path) -> Option
     return None
 
 
+def _expand_repo_placeholder(value: str | Path | None, repo_name: str) -> str | Path | None:
+    if value is None:
+        return None
+    if isinstance(value, Path):
+        value = str(value)
+    return value.replace("${repo_name}", repo_name)
+
+
 def _first_executable_path(candidates: Iterable[str | Path], base: Path) -> Optional[Path]:
     for candidate in candidates:
         path = _as_path(candidate, base)
@@ -92,14 +100,20 @@ class TestingAgentConfig:
                 + ", ".join(project_root_candidates or ["<missing>"])
             )
 
-        code_coverage_rel = raw.get("code_coverage_report_path")
-        if not code_coverage_rel:
-            raise ValueError("`code_coverage_report_path` must be provided")
-        code_coverage_report_path = (project_root / code_coverage_rel).resolve()
-
         test_command = raw.get("test_command", "pytest")
         test_command_dir_rel = raw.get("test_command_dir", "tests")
         test_command_dir = (project_root / test_command_dir_rel).resolve()
+
+        code_coverage_rel = raw.get("code_coverage_report_path")
+        code_coverage_rel = _expand_repo_placeholder(code_coverage_rel, repo_name)
+        if not code_coverage_rel:
+            code_coverage_path = Path(test_command_dir_rel) / "coverage.xml"
+        else:
+            code_coverage_path = Path(code_coverage_rel)
+        if not code_coverage_path.is_absolute():
+            code_coverage_report_path = (project_root / code_coverage_path).resolve()
+        else:
+            code_coverage_report_path = code_coverage_path.resolve()
 
         coverage_type = raw.get("coverage_type", "cobertura")
         desired_coverage = int(raw.get("desired_coverage", 90))
@@ -142,12 +156,17 @@ class TestingAgentConfig:
                         DeprecationWarning,
                     )
                 selected_rel = legacy_rel
+            selected_rel = _expand_repo_placeholder(selected_rel, repo_name)
             if selected_rel:
-                html_report_path = (project_root / selected_rel).resolve()
+                selected_path = Path(selected_rel)
+                if not selected_path.is_absolute():
+                    html_report_path = (project_root / selected_path).resolve()
+                else:
+                    html_report_path = selected_path.resolve()
             else:
                 html_report_path = None
         else:
-            default_output_rel = "tests/testing_agent_report.html"
+            default_output_rel = Path(test_command_dir_rel) / "testing_agent_report.html"
             html_report_path = (project_root / default_output_rel).resolve()
 
         migration_data = raw.get("migration")
@@ -186,9 +205,10 @@ class TestingAgentConfig:
         pytest_include_expr = raw.get("pytest_include_expr", "")
         pytest_exclude_expr = raw.get("pytest_exclude_expr", "")
 
-        selector_output_rel = raw.get(
-            "selector_output_path", "repograph_runner/output/repograph_result.json"
-        )
+        selector_output_rel = raw.get("selector_output_path")
+        if selector_output_rel is None:
+            selector_output_rel = Path("repograph_runner/output/repograph_result.json")
+        selector_output_rel = _expand_repo_placeholder(selector_output_rel, repo_name)
         selector_output_path = _as_path(selector_output_rel, base_dir)
 
         run_tests_multiple_times = int(raw.get("run_tests_multiple_times", 1))
@@ -204,11 +224,11 @@ class TestingAgentConfig:
             for key, value in (raw.get("repo_env_environment") or {}).items()
         }
 
-        log_file_rel = raw.get("log_file")
+        log_file_rel = _expand_repo_placeholder(raw.get("log_file"), repo_name)
         if log_file_rel:
             log_file = _as_path(log_file_rel, base_dir)
         else:
-            log_file = base_dir / "run.log"
+            log_file = (base_dir / "artifacts" / repo_name / "testing_agent.log").resolve()
         log_file = log_file.resolve()
 
         return cls(
