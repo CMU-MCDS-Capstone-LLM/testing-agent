@@ -43,6 +43,7 @@ class TestingAgent:
     ) -> None:
         self.config = config
         self.logger = logger or logging.getLogger(__name__)
+        self.aggregate_test_file = config.aggregate_test_file
         if test_executor is not None:
             self.test_executor = test_executor
         else:
@@ -127,6 +128,8 @@ class TestingAgent:
 
     def _ensure_directories(self) -> None:
         self.config.test_command_dir.mkdir(parents=True, exist_ok=True)
+        if self.aggregate_test_file:
+            self.aggregate_test_file.parent.mkdir(parents=True, exist_ok=True)
         if self.config.html_report_path:
             self.config.html_report_path.parent.mkdir(parents=True, exist_ok=True)
         self.config.code_coverage_report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -245,17 +248,28 @@ class TestingAgent:
         cov_targets: Set[str] = set()
         include_tokens: Set[str] = set()
 
+        aggregate_token = None
+        if self.aggregate_test_file:
+            aggregate_token = self.aggregate_test_file.stem
+
         for rel_path in selected_paths:
             module = self._normalize_module(rel_path)
             if not module:
                 continue
 
             if module.startswith("tests") or ".tests." in module:
-                include_tokens.add(Path(module).name)
+                if aggregate_token is None:
+                    include_tokens.add(Path(module).name)
                 continue
 
             cov_targets.add(module)
-            include_tokens.update(self._discover_test_tokens(rel_path))
+            if aggregate_token:
+                include_tokens.add(aggregate_token)
+            else:
+                include_tokens.update(self._discover_test_tokens(rel_path))
+
+        if aggregate_token:
+            include_tokens.add(aggregate_token)
 
         include_tokens = {token for token in include_tokens if token}
         cov_targets = {target for target in cov_targets if target}
@@ -409,34 +423,16 @@ class TestingAgent:
         self._run_cover_agent(source_path, test_file, included_files, test_command)
 
     def _resolve_test_file(self, source_path: Path) -> tuple[Path, bool]:
+        if self.aggregate_test_file:
+            aggregate_path = self.aggregate_test_file.resolve()
+            aggregate_path.parent.mkdir(parents=True, exist_ok=True)
+            return aggregate_path, not aggregate_path.exists()
+
         basename = source_path.name
-        stem = source_path.stem
-
-        candidates: List[Path] = []
-        patterns = [
-            f"test_{basename}",
-            f"test_{stem}.py",
-            f"{stem}_test.py",
-        ]
-
-        for pattern in patterns:
-            candidates.extend(self._glob_candidates(pattern))
-
-        selected: Optional[Path] = None
-        for candidate in candidates:
-            candidate_str = str(candidate)
-            if "/tests/" in candidate_str or "/test/" in candidate_str:
-                selected = candidate
-                break
-        if selected is None and candidates:
-            selected = candidates[0]
-
-        if selected:
-            return selected.resolve(), False
-
         new_test = (self.config.test_command_dir / f"test_{basename}").resolve()
+        created = not new_test.exists()
         new_test.parent.mkdir(parents=True, exist_ok=True)
-        return new_test, True
+        return new_test, created
 
     def _glob_candidates(self, pattern: str) -> List[Path]:
         matches: List[Path] = []
@@ -450,13 +446,23 @@ class TestingAgent:
         return matches
 
     def _initialise_test_file(self, test_file: Path, source_path: Path) -> None:
-        module_name = source_path.stem
-        initial_content = (
-            "# do not delete this comment, this is where pytest adding import pkg msg\n"
-            f"import {module_name}\n\n"
-            "def test_dummy():\n"
-            "    assert True  # dummy test - placeholder for future tests\n"
-        )
+        if self.aggregate_test_file and test_file.resolve() == self.aggregate_test_file.resolve():
+            initial_content = (
+                "# Auto-generated aggregated tests by testing agent.\n"
+                "# Tests from multiple modules may be appended here.\n"
+                f"{AUTO_IMPORT_MARKER}\n\n"
+                "def test_placeholder():\n"
+                "    \"\"\"Ensures pytest collects this file when empty.\"\"\"\n"
+                "    assert True\n\n"
+            )
+        else:
+            module_name = source_path.stem
+            initial_content = (
+                "# do not delete this comment, this is where pytest adding import pkg msg\n"
+                f"import {module_name}\n\n"
+                "def test_dummy():\n"
+                "    assert True  # dummy test - placeholder for future tests\n"
+            )
         test_file.write_text(initial_content, encoding="utf-8")
         self.logger.info("Created new test file %s", test_file)
 
@@ -507,6 +513,27 @@ class TestingAgent:
         except OSError as exc:
             self.logger.warning("Failed to read test file %s: %s", test_file, exc)
             return
+
+        if self.aggregate_test_file and test_file.resolve() == self.aggregate_test_file.resolve():
+            lines = current.splitlines()
+            if AUTO_IMPORT_MARKER in lines:
+                marker_idx = lines.index(AUTO_IMPORT_MARKER)
+                insert_idx = marker_idx + 1
+                existing: Set[str] = set()
+                while insert_idx < len(lines) and lines[insert_idx].strip():
+                    existing.add(lines[insert_idx])
+                    insert_idx += 1
+                additions = [line for line in import_block.splitlines() if line and line not in existing]
+                if not additions:
+                    return
+                updated = (
+                    lines[: marker_idx + 1]
+                    + additions
+                    + lines[marker_idx + 1 :]
+                )
+                test_file.write_text("\n".join(updated) + "\n", encoding="utf-8")
+                self.logger.info("Updated import block in %s", test_file)
+                return
 
         if AUTO_IMPORT_MARKER in current:
             return

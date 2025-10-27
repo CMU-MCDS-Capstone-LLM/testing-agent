@@ -51,6 +51,7 @@ class TestingAgentConfig:
     code_coverage_report_path: Path
     test_command: str
     test_command_dir: Path
+    aggregate_test_file: Path
     coverage_type: str
     desired_coverage: int
     max_iterations: int
@@ -107,13 +108,14 @@ class TestingAgentConfig:
         code_coverage_rel = raw.get("code_coverage_report_path")
         code_coverage_rel = _expand_repo_placeholder(code_coverage_rel, repo_name)
         if not code_coverage_rel:
-            code_coverage_path = Path(test_command_dir_rel) / "coverage.xml"
+            coverage_candidate = Path("artifacts") / repo_name / "coverage.xml"
         else:
-            code_coverage_path = Path(code_coverage_rel)
-        if not code_coverage_path.is_absolute():
-            code_coverage_report_path = (project_root / code_coverage_path).resolve()
-        else:
-            code_coverage_report_path = code_coverage_path.resolve()
+            coverage_candidate = Path(code_coverage_rel)
+        code_coverage_report_path = (
+            (base_dir / coverage_candidate).resolve()
+            if not coverage_candidate.is_absolute()
+            else coverage_candidate.resolve()
+        )
 
         coverage_type = raw.get("coverage_type", "cobertura")
         desired_coverage = int(raw.get("desired_coverage", 90))
@@ -144,6 +146,18 @@ class TestingAgentConfig:
         )
         if test_requirements_file and not test_requirements_file.exists():
             test_requirements_file = None
+
+        aggregate_rel = raw.get("aggregate_test_file")
+        aggregate_rel = _expand_repo_placeholder(aggregate_rel, repo_name)
+        if aggregate_rel:
+            aggregate_candidate = Path(aggregate_rel)
+        else:
+            aggregate_candidate = Path(test_command_dir_rel) / "test_additional.py"
+        aggregate_test_file = (
+            (project_root / aggregate_candidate).resolve()
+            if not aggregate_candidate.is_absolute()
+            else aggregate_candidate.resolve()
+        )
 
         html_report_path: Optional[Path]
         if "html_report_path" in raw or "output_file" in raw:
@@ -237,6 +251,7 @@ class TestingAgentConfig:
             code_coverage_report_path=code_coverage_report_path,
             test_command=test_command,
             test_command_dir=test_command_dir,
+            aggregate_test_file=aggregate_test_file,
             coverage_type=coverage_type,
             desired_coverage=desired_coverage,
             max_iterations=max_iterations,
