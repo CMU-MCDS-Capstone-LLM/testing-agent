@@ -21,8 +21,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output",
-        required=True,
-        help="File where environment variables will be written.",
+        default="-",
+        help="Destination path or '-' to emit results to stdout only (default).",
+    )
+    parser.add_argument(
+        "--log-file",
+        default="",
+        help="Optional log file to append results to.",
     )
     return parser.parse_args()
 
@@ -103,30 +108,53 @@ def build_arguments(repo_root: Path, selected: Set[Path]) -> Tuple[Set[str], Set
     return cov_targets, include_tokens
 
 
-def write_env_file(output: Path, cov_targets: Set[str], expressions: Set[str]) -> None:
-    output.parent.mkdir(parents=True, exist_ok=True)
-
+def emit_env(
+    cov_targets: Set[str],
+    expressions: Set[str],
+    *,
+    output: str,
+    log_file: str,
+) -> None:
     cov_value = ",".join(sorted(cov_targets)) if cov_targets else ""
     expr_value = " or ".join(sorted(expressions)) if expressions else ""
 
-    with output.open("w", encoding="utf-8") as handle:
-        handle.write(f'PYTEST_COV_TARGET="{cov_value}"\n')
-        handle.write(f'PYTEST_INCLUDE_EXPR="{expr_value}"\n')
+    lines = [
+        f'PYTEST_COV_TARGET="{cov_value}"',
+        f'PYTEST_INCLUDE_EXPR="{expr_value}"',
+    ]
+
+    # Always print to stdout for immediate consumption.
+    for line in lines:
+        print(line)
+
+    # Optional explicit output file (kept for backwards compatibility).
+    if output and output != "-":
+        dest = Path(output).resolve()
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # Optional log file to append to (e.g., testing-agent log).
+    if log_file:
+        log_path = Path(log_file).resolve()
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write("\n".join(lines) + "\n")
 
 
 def main() -> None:
     args = parse_args()
     repo_root = Path(args.repo_root).resolve()
     selector_json = Path(args.selector_json).resolve()
-    output_path = Path(args.output).resolve()
+    output_arg = args.output
+    log_arg = args.log_file
 
     if not selector_json.exists():
-        write_env_file(output_path, set(), set())
+        emit_env(set(), set(), output=output_arg, log_file=log_arg)
         return
 
     selected_paths = load_selected_paths(selector_json)
     cov_targets, expressions = build_arguments(repo_root, selected_paths)
-    write_env_file(output_path, cov_targets, expressions)
+    emit_env(cov_targets, expressions, output=output_arg, log_file=log_arg)
 
 
 if __name__ == "__main__":
