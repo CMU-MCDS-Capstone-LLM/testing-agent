@@ -111,11 +111,13 @@ class TestingAgentConfig:
             coverage_candidate = Path("artifacts") / repo_name / "coverage.xml"
         else:
             coverage_candidate = Path(code_coverage_rel)
-        code_coverage_report_path = (
-            (base_dir / coverage_candidate).resolve()
-            if not coverage_candidate.is_absolute()
-            else coverage_candidate.resolve()
-        )
+        coverage_root = base_dir
+        if coverage_candidate.parts and coverage_candidate.parts[0] == repo_name:
+            coverage_candidate = Path("artifacts") / coverage_candidate
+        if not coverage_candidate.is_absolute():
+            code_coverage_report_path = (coverage_root / coverage_candidate).resolve()
+        else:
+            code_coverage_report_path = coverage_candidate.resolve()
 
         coverage_type = raw.get("coverage_type", "cobertura")
         desired_coverage = int(raw.get("desired_coverage", 90))
