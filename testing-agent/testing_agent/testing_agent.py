@@ -275,6 +275,33 @@ class TestingAgent:
         cov_targets = {target for target in cov_targets if target}
         return cov_targets, include_tokens
 
+    def _ensure_module_import_stub(self, test_file: Path, module_name: str) -> None:
+        if not self.aggregate_test_file:
+            return
+        if test_file.resolve() != self.aggregate_test_file.resolve():
+            return
+
+        stub_name = f"test_import_{module_name.replace('.', '_')}"
+
+        try:
+            current = test_file.read_text(encoding="utf-8")
+        except OSError as exc:
+            self.logger.warning("Failed to read test file %s: %s", test_file, exc)
+            return
+
+        if stub_name in current:
+            return
+
+        snippet = (
+            f"\n\ndef {stub_name}():\n"
+            "    import importlib\n"
+            f"    importlib.import_module(\"{module_name}\")\n"
+            "    assert True\n"
+        )
+
+        self.aggregate_test_file.write_text(current + snippet, encoding="utf-8")
+        self.logger.info("Added import stub for %s to %s", module_name, test_file)
+
     def _normalize_module(self, rel_path: Path) -> Optional[str]:
         if rel_path.suffix != ".py":
             return None
@@ -412,14 +439,19 @@ class TestingAgent:
             return
 
         self.logger.info("Processing source file %s", source_path)
+        module_name = self._normalize_module(source_rel)
+        if not module_name:
+            module_name = source_path.stem
+
         test_file, created = self._resolve_test_file(source_path)
         if created:
-            self._initialise_test_file(test_file, source_path)
+            self._initialise_test_file(test_file, source_path, module_name)
 
         import_block = self._extract_import_block(source_path)
         if import_block:
             self._ensure_import_block(test_file, import_block)
 
+        self._ensure_module_import_stub(test_file, module_name)
         self._run_cover_agent(source_path, test_file, included_files, test_command)
 
     def _resolve_test_file(self, source_path: Path) -> tuple[Path, bool]:
@@ -445,18 +477,24 @@ class TestingAgent:
         matches.sort()
         return matches
 
-    def _initialise_test_file(self, test_file: Path, source_path: Path) -> None:
+    def _initialise_test_file(
+        self,
+        test_file: Path,
+        source_path: Path,
+        module_name: str,
+    ) -> None:
         if self.aggregate_test_file and test_file.resolve() == self.aggregate_test_file.resolve():
             initial_content = (
                 "# Auto-generated aggregated tests by testing agent.\n"
                 "# Tests from multiple modules may be appended here.\n"
-                f"{AUTO_IMPORT_MARKER}\n\n"
+                f"{AUTO_IMPORT_MARKER}\n"
+                "import importlib\n\n"
                 "def test_placeholder():\n"
-                "    \"\"\"Ensures pytest collects this file when empty.\"\"\"\n"
+                "    import importlib\n"
+                f"    importlib.import_module(\"{module_name}\")\n"
                 "    assert True\n\n"
             )
         else:
-            module_name = source_path.stem
             initial_content = (
                 "# do not delete this comment, this is where pytest adding import pkg msg\n"
                 f"import {module_name}\n\n"

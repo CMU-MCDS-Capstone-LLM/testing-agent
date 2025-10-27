@@ -2,7 +2,7 @@ repo_name: keep2roam
 project_root_candidates:
 - /demos/keep2roam
 - ../demos/keep2roam
-code_coverage_report_path: artifacts/${repo_name}/coverage.xml
+code_coverage_report_path: null
 test_command: pytest
 test_command_dir: tests
 coverage_type: cobertura

@@ -109,11 +109,11 @@ class TestingAgentConfig:
         code_coverage_rel = raw.get("code_coverage_report_path")
         code_coverage_rel = _expand_repo_placeholder(code_coverage_rel, repo_name)
         if not code_coverage_rel:
-            coverage_candidate = Path("artifacts") / repo_name / "coverage.xml"
+            coverage_candidate = Path(test_command_dir_rel) / "coverage.xml"
         else:
             coverage_candidate = Path(code_coverage_rel)
         if not coverage_candidate.is_absolute():
-            code_coverage_report_path = (base_dir / coverage_candidate).resolve()
+            code_coverage_report_path = (project_root / coverage_candidate).resolve()
         else:
             code_coverage_report_path = coverage_candidate.resolve()
 
