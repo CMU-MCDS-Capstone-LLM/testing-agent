@@ -23,5 +23,6 @@ tree_sitter
 tree_sitter_languages
 jedi-language-server
 pymigbench
+git+https://github.com/CMU-MCDS-Capstone-LLM/LSP-Repograph.git@main#egg=lsp-repograph
 
 
