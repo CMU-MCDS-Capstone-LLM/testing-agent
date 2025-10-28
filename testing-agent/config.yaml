@@ -1,10 +1,12 @@
 repo_name: keep2roam
 project_root_candidates:
-- /demos/keep2roam
-- ../demos/keep2roam
-code_coverage_report_path: null
+- /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam
+code_coverage_report_path: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests/
+  coverage.xml
+aggregate_test_file: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests/
+  test_additional.py
 test_command: pytest
-test_command_dir: tests
+test_command_dir: /Users/shanrulin/Desktop/all/capstone/container/demos/keep2roam/tests/
 coverage_type: cobertura
 desired_coverage: 90
 max_iterations: 8
@@ -32,8 +34,8 @@ additional_instructions: "Only mock external dependencies; never patch functions
 repo_requirements_file: requirements.txt
 install_repo_deps_without_deps: false
 test_requirements_file: tests/requirements.txt
-html_report_path: artifacts/${repo_name}/testing_agent_report.html
-log_file: artifacts/${repo_name}/testing_agent.log
+html_report_path: /Users/shanrulin/Desktop/all/capstone/container/testing-agent/artifacts/keep2roam/testing_agent_report.html
+log_file: /Users/shanrulin/Desktop/all/capstone/container/testing-agent/artifacts/keep2roam/testing_agent.log
 migration:
   source: argparse
   workspace_symbols: []
@@ -43,7 +45,7 @@ repo_venv_python_candidates:
 pytest_cov_target: ''
 pytest_include_expr: ''
 pytest_exclude_expr: ''
-selector_output_path: repograph_runner/output/repograph_result.json
+selector_output_path: /Users/shanrulin/Desktop/all/capstone/container/testing-agent/repograph_runner/output/repograph_result.json
 run_tests_multiple_times: 1
 branch: main
 diff_coverage: false

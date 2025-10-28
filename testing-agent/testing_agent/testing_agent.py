@@ -70,7 +70,6 @@ class TestingAgent:
         self._export_api_keys()
         self._ensure_pythonpath()
         self._ensure_directories()
-        self._install_dependencies()
 
         repograph_result = self._run_repograph()
         cov_targets, include_expression = self._build_pytest_arguments(repograph_result)
@@ -137,51 +136,6 @@ class TestingAgent:
         if self.config.log_file:
             self.config.log_file.parent.mkdir(parents=True, exist_ok=True)
         self._ensure_conftest()
-
-    def _install_dependencies(self) -> None:
-        pip_timeout = max(self.config.max_run_time, 300)
-
-        def run_pip(args: Sequence[str], description: str) -> None:
-            command = shlex.join(
-                [str(self.config.repo_venv_python), "-m", "pip", *args]
-            )
-            self.logger.info("%s", description)
-            result = self.test_executor.run_command(
-                command=command,
-                max_run_time=pip_timeout,
-                cwd=str(self.config.project_root),
-            )
-            if result.exit_code != 0:
-                raise RuntimeError(
-                    f"{description} failed with exit code {result.exit_code}: {result.stderr.strip()}"
-                )
-
-        try:
-            run_pip(["install", "-U", "pip", "wheel", "setuptools"], "Upgrading pip tooling")
-        except RuntimeError as exc:
-            self.logger.warning(str(exc))
-
-        if self.config.repo_requirements_file and self.config.repo_requirements_file.exists():
-            repo_args: List[str] = ["install", "--no-cache-dir"]
-            if self.config.install_repo_deps_without_deps:
-                repo_args.append("--no-deps")
-            repo_args.extend(["-r", str(self.config.repo_requirements_file)])
-            run_pip(
-                repo_args,
-                f"Installing repo requirements from {self.config.repo_requirements_file}",
-            )
-
-        if self.config.test_requirements_file and self.config.test_requirements_file.exists():
-            test_args: List[str] = [
-                "install",
-                "--no-cache-dir",
-                "-r",
-                str(self.config.test_requirements_file),
-            ]
-            run_pip(
-                test_args,
-                f"Installing test requirements from {self.config.test_requirements_file}",
-            )
 
     # ------------------------------------------------------------------
     # RepoGraph & pytest argument computation
