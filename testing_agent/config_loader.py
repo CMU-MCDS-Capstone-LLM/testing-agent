@@ -59,9 +59,6 @@ class TestingAgentConfig:
     api_base: Optional[str]
     max_run_time: int
     additional_instructions: str
-    repo_requirements_file: Optional[Path]
-    install_repo_deps_without_deps: bool
-    test_requirements_file: Optional[Path]
     html_report_path: Optional[Path]
     migration: Dict[str, object]
     repo_venv_python: Path
@@ -82,6 +79,11 @@ class TestingAgentConfig:
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "TestingAgentConfig":
+        def maybe_concat(rel_or_abs_path: Path, parent_folder: Path):
+            if rel_or_abs_path.is_absolute():
+                return rel_or_abs_path.resolve()
+            return (parent_folder / rel_or_abs_path).resolve()
+
         config_path = Path(path).resolve()
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
@@ -89,35 +91,36 @@ class TestingAgentConfig:
         with config_path.open("r", encoding="utf-8") as handle:
             raw = yaml.safe_load(handle) or {}
 
-        base_dir = config_path.parent
+        repo_name = raw["repo_name"]
 
-        repo_name = raw.get("repo_name")
-        if not repo_name:
-            raise ValueError("`repo_name` must be specified in the configuration")
-
-        project_root_candidates: List[str] = raw.get("project_root_candidates", [])
-        project_root = _first_existing_path(project_root_candidates, base_dir)
+        project_root_candidates = [Path(p).resolve() for p in raw["project_root_candidates"]]
+        for p in project_root_candidates:
+            if not p.is_absolute():
+                raise RuntimeError(f"Project root must be an absolute path. Instead, we got {p}");
+        project_root = _first_existing_path(project_root_candidates, Path("/"))
         if project_root is None:
             raise FileNotFoundError(
                 "None of the configured project_root_candidates exist: "
                 + ", ".join(project_root_candidates or ["<missing>"])
             )
 
-        test_command = raw.get("test_command", "pytest")
-        test_command_dir_rel = raw.get("test_command_dir", "tests")
-        test_command_dir = (project_root / test_command_dir_rel).resolve()
+        metadata_folder = Path(raw['metadata_folder'])
+        if not metadata_folder.is_absolute():
+            raise ValueError("metadata_folder must be an absolute path!")
 
+        test_command = raw["test_command"]
 
-        code_coverage_rel = raw.get("code_coverage_report_path")
-        code_coverage_rel = _expand_repo_placeholder(code_coverage_rel, repo_name)
-        if not code_coverage_rel:
-            coverage_candidate = Path(test_command_dir_rel) / "coverage.xml"
-        else:
-            coverage_candidate = Path(code_coverage_rel)
-        if not coverage_candidate.is_absolute():
-            code_coverage_report_path = (project_root / coverage_candidate).resolve()
-        else:
-            code_coverage_report_path = coverage_candidate.resolve()
+        # TODO: May need to move to input-tests folder instead
+        # For now, we save test directly under repo root
+        test_command_dir = maybe_concat(
+            Path(raw["test_command_dir"]),
+            project_root
+        )
+
+        code_coverage_report_path = maybe_concat(
+            Path(raw["code_coverage_report_path"]),
+            metadata_folder
+        )
 
         coverage_type = raw.get("coverage_type", "cobertura")
         desired_coverage = int(raw.get("desired_coverage", 90))
@@ -127,73 +130,26 @@ class TestingAgentConfig:
         max_run_time = int(raw.get("max_run_time", 180))
         additional_instructions = raw.get("additional_instructions", "")
 
-        repo_requirements_rel = raw.get("repo_requirements_file")
-        repo_requirements_file = (
-            (project_root / repo_requirements_rel).resolve()
-            if repo_requirements_rel
-            else None
-        )
-        if repo_requirements_file and not repo_requirements_file.exists():
-            repo_requirements_file = None
-
-        install_repo_deps_without_deps = bool(
-            raw.get("install_repo_deps_without_deps", False)
+        aggregate_test_file = maybe_concat(
+            Path(raw["aggregate_test_file"]),
+            test_command_dir
         )
 
-        test_requirements_rel = raw.get("test_requirements_file")
-        test_requirements_file = (
-            (project_root / test_requirements_rel).resolve()
-            if test_requirements_rel
-            else None
-        )
-        if test_requirements_file and not test_requirements_file.exists():
-            test_requirements_file = None
-
-        aggregate_rel = raw.get("aggregate_test_file")
-        aggregate_rel = _expand_repo_placeholder(aggregate_rel, repo_name)
-        if aggregate_rel:
-            aggregate_candidate = Path(aggregate_rel)
-        else:
-            aggregate_candidate = Path(test_command_dir_rel) / "test_additional.py"
-        aggregate_test_file = (
-            (project_root / aggregate_candidate).resolve()
-            if not aggregate_candidate.is_absolute()
-            else aggregate_candidate.resolve()
+        html_report_path = maybe_concat(
+            Path(raw["html_report_path"]),
+            metadata_folder
         )
 
-        html_report_path: Optional[Path]
-        if "html_report_path" in raw or "output_file" in raw:
-            selected_rel = raw.get("html_report_path")
-            if selected_rel is None and "output_file" in raw:
-                legacy_rel = raw.get("output_file")
-                if legacy_rel is not None:
-                    warnings.warn(
-                        "`output_file` is deprecated; use `html_report_path` instead.",
-                        DeprecationWarning,
-                    )
-                selected_rel = legacy_rel
-            selected_rel = _expand_repo_placeholder(selected_rel, repo_name)
-            if selected_rel:
-                selected_path = Path(selected_rel)
-                if not selected_path.is_absolute():
-                    html_report_path = (base_dir / selected_path).resolve()
-                else:
-                    html_report_path = selected_path.resolve()
-            else:
-                html_report_path = None
-        else:
-            default_output_rel = Path("artifacts") / repo_name / "testing_agent_report.html"
-            html_report_path = (base_dir / default_output_rel).resolve()
-
-        migration_data = raw.get("migration")
+        migration_data = raw["migration"]
         if not isinstance(migration_data, dict):
             raise ValueError("`migration` section must be provided as a mapping")
 
         repo_venv_python_candidates: List[str] = raw.get(
             "repo_venv_python_candidates", []
         )
+        # TODO: The logic of _first_executable_path need fixes
         repo_venv_python = _first_executable_path(
-            repo_venv_python_candidates, base_dir
+            repo_venv_python_candidates, Path("/")
         )
         if repo_venv_python is None:
             fallback_candidates: List[str] = []
@@ -212,7 +168,7 @@ class TestingAgentConfig:
                     break
 
         if repo_venv_python is None:
-            raise FileNotFoundError(
+            raise RuntimeError(
                 "None of the configured repo_venv_python_candidates are executable: "
                 + ", ".join(repo_venv_python_candidates or ["<missing>"])
             )
@@ -221,11 +177,10 @@ class TestingAgentConfig:
         pytest_include_expr = raw.get("pytest_include_expr", "")
         pytest_exclude_expr = raw.get("pytest_exclude_expr", "")
 
-        selector_output_rel = raw.get("selector_output_path")
-        if selector_output_rel is None:
-            selector_output_rel = Path("repograph_runner/output/repograph_result.json")
-        selector_output_rel = _expand_repo_placeholder(selector_output_rel, repo_name)
-        selector_output_path = _as_path(selector_output_rel, base_dir)
+        selector_output_path = maybe_concat(
+            Path(raw['selector_output_path']), 
+            metadata_folder
+        )
 
         run_tests_multiple_times = int(raw.get("run_tests_multiple_times", 1))
         branch = raw.get("branch", "main")
@@ -240,15 +195,16 @@ class TestingAgentConfig:
             for key, value in (raw.get("repo_env_environment") or {}).items()
         }
 
-        log_file_rel = _expand_repo_placeholder(raw.get("log_file"), repo_name)
-        if log_file_rel:
-            log_file = _as_path(log_file_rel, base_dir)
-        else:
-            log_file = (base_dir / "artifacts" / repo_name / "testing_agent.log").resolve()
-        log_file = log_file.resolve()
-        log_level = raw.get("log_level", "INFO")
+        log_file = maybe_concat(
+            Path(raw['log_file']), 
+            metadata_folder
+        )
+        log_level = raw.get("log_level", "INFO").upper()
 
-        cover_agent_log_db_path = raw.get("cover_agent_log_db_path")
+        cover_agent_log_db_path = maybe_concat(
+            Path(raw['cover_agent_log_db_path']), 
+            metadata_folder
+        )
 
         return cls(
             repo_name=repo_name,
@@ -264,9 +220,6 @@ class TestingAgentConfig:
             api_base=api_base,
             max_run_time=max_run_time,
             additional_instructions=additional_instructions,
-            repo_requirements_file=repo_requirements_file,
-            install_repo_deps_without_deps=install_repo_deps_without_deps,
-            test_requirements_file=test_requirements_file,
             html_report_path=html_report_path,
             migration=migration_data,
             repo_venv_python=repo_venv_python,

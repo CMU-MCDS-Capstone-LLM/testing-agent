@@ -45,19 +45,7 @@ To run this demo, follow these steps
 
     Here is a list of all fields containing path
 
-    - `project_root_candidates`:
-
-    - `code_coverage_report_path`:
-
-    - `html_report_path`:
-
-    - `log_file`:
-
-    - `log_db_path`:
-
-    - `selector_output_path`:
-
-    - `cover_agent_log_db_path`:
+    - `metadata_folder`: folder to hold metadata. Other paths like coverage report path are relative to metadata folder
 
     - `repo_venv_python_candidates`: add the path to python interpreter under repo conda env
 
@@ -78,5 +66,3 @@ To run this demo, follow these steps
     ```
 
 The test log will be written to `demos/keep2roam/tiny_data/input-tests`, while the actual test will be stored under `demos/keep2roam/tiny_data/repos/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/tests`
-
-TODO: Test this out

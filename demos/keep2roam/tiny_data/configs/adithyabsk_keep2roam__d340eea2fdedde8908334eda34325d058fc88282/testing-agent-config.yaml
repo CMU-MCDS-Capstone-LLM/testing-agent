@@ -1,7 +1,9 @@
 repo_name: adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282
 project_root_candidates:
   - /home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/demos/keep2roam/tiny_data/repos/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282
-code_coverage_report_path: /home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/demos/keep2roam/tiny_data/input-tests/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/coverage.xml
+# All types of metadata and logs will be written to this folder, such as coverage report, unit test db, etc.
+metadata_folder: /home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/demos/keep2roam/tiny_data/input-tests/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/
+code_coverage_report_path: coverage.xml
 test_command: pytest
 test_command_dir: tests
 coverage_type: cobertura
@@ -30,13 +32,14 @@ additional_instructions:
   \ (happy-path) scenarios first, but fulfil the mandatory exception-path test above\
   \ whenever those lines are uncovered.\nEnsure each proposed test adds new line or\
   \ branch coverage; skip any test that duplicates existing behavior.\n"
-repo_requirements_file: requirements.txt
 install_repo_deps_without_deps: false
 test_requirements_file: tests/requirements.txt
-html_report_path: /home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/demos/keep2roam/tiny_data/input-tests/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/testing_agent_report.html
-log_file: /home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/demos/keep2roam/tiny_data/input-tests/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/testing_agent.log
+html_report_path: testing_agent_report.html
+log_file: testing_agent.log
 log_level: info
-log_db_path: /home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/demos/keep2roam/tiny_data/input-tests/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/cover_agent_unit_test_runs.db
+log_db_path: cover_agent_unit_test_runs.db
+cover_agent_log_db_path: cover_agent_unit_test_runs.db
+aggregate_test_file: test_additional.py
 migration:
   source: argparse
   workspace_symbols: []
@@ -54,4 +57,3 @@ repo_env_pre_commands:
   - source "/home/eiger/miniconda3/etc/profile.d/conda.sh"
   - conda activate adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282
 repo_env_environment: {}
-cover_agent_log_db_path: /home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/demos/keep2roam/tiny_data/input-tests/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/cover_agent_unit_test_runs.db
