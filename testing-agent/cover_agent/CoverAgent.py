@@ -2,6 +2,7 @@ import datetime
 import os
 import shutil
 import sys
+import logging
 try:
     import wandb  # type: ignore
 except ImportError:  # pragma: no cover - optional dependency
@@ -9,7 +10,6 @@ except ImportError:  # pragma: no cover - optional dependency
 
 from typing import List, Optional
 
-from cover_agent.CustomLogger import CustomLogger
 from cover_agent.UnitTestGenerator import UnitTestGenerator
 from cover_agent.UnitTestValidator import UnitTestValidator
 from cover_agent.UnitTestDB import UnitTestDB
@@ -49,7 +49,7 @@ class CoverAgent:
             FileNotFoundError: If required source files or directories are not found.
         """
         self.args = args
-        self.logger = CustomLogger.get_logger(__name__)
+        self.logger = logging.getLogger(__name__)
         self.command_runner = runner or LocalRunner()
 
         self._validate_paths()

@@ -1,11 +1,11 @@
 from cover_agent.AgentCompletionABC import AgentCompletionABC
 from cover_agent.AICaller import AICaller
-from cover_agent.CustomLogger import CustomLogger
 from cover_agent.settings.config_loader import get_settings
 from cover_agent.utils import load_yaml
 
 from jinja2 import Environment, StrictUndefined
 from typing import Tuple
+import logging
 
 
 class DefaultAgentCompletion(AgentCompletionABC):
@@ -24,7 +24,7 @@ class DefaultAgentCompletion(AgentCompletionABC):
             caller (AICaller): A class responsible for sending the prompt to an AI model and returning the response.
         """
         self.caller = caller
-        self.logger = CustomLogger.get_logger(__name__)
+        self.logger = logging.getLogger(__name__)
 
     def _build_prompt(self, file: str, **kwargs) -> dict:
         """

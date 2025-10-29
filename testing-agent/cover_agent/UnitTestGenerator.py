@@ -2,10 +2,10 @@ import ast
 import json
 import os
 import re
+import logging
 #{
 from typing import Set
 #}
-from cover_agent.CustomLogger import CustomLogger
 from cover_agent.FilePreprocessor import FilePreprocessor
 from cover_agent.AgentCompletionABC import AgentCompletionABC
 from cover_agent.settings.config_loader import get_settings
@@ -69,8 +69,7 @@ class UnitTestGenerator:
         self.llm_model = llm_model
         self.agent_completion = agent_completion
 
-        # Get the logger instance from CustomLogger
-        self.logger = CustomLogger.get_logger(__name__)
+        self.logger = logging.getLogger(__name__)
 
         # States to maintain within this class
         self.preprocessor = FilePreprocessor(self.test_file_path)

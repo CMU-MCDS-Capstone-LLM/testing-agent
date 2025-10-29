@@ -10,7 +10,6 @@ from typing import Optional
 
 from cover_agent.AgentCompletionABC import AgentCompletionABC
 from cover_agent.CoverageProcessor import CoverageProcessor
-from cover_agent.CustomLogger import CustomLogger
 from cover_agent.FilePreprocessor import FilePreprocessor
 from cover_agent.Runner import CommandResult, LocalRunner, Runner
 from cover_agent.settings.config_loader import get_settings
@@ -89,8 +88,7 @@ class UnitTestValidator:
         self.max_run_time = max_run_time
         self.command_runner = runner or LocalRunner()
 
-        # Get the logger instance from CustomLogger
-        self.logger = CustomLogger.get_logger(__name__)
+        self.logger = logging.getLogger(__name__)
 
         # Override covertype to be 'diff' if diff_coverage is enabled
         if self.diff_coverage:

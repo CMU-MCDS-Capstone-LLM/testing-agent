@@ -76,6 +76,7 @@ class TestingAgentConfig:
     repo_env_pre_commands: List[str]
     repo_env_environment: Dict[str, str]
     log_file: Path
+    log_level: str
     config_path: Path
 
     @classmethod
@@ -244,6 +245,7 @@ class TestingAgentConfig:
         else:
             log_file = (base_dir / "artifacts" / repo_name / "testing_agent.log").resolve()
         log_file = log_file.resolve()
+        log_level = raw.get("log_level", "INFO")
 
         return cls(
             repo_name=repo_name,
@@ -276,5 +278,6 @@ class TestingAgentConfig:
             repo_env_pre_commands=repo_env_pre_commands,
             repo_env_environment=repo_env_environment,
             log_file=log_file,
+            log_level=log_level,
             config_path=config_path,
         )

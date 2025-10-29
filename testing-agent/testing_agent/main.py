@@ -30,9 +30,8 @@ def main() -> None:
 
     config = TestingAgentConfig.from_yaml(Path(args.config))
 
-    log_format = "[%(levelname)s] %(message)s"
-    # log_level = getattr(logging, args.log_level.upper(), logging.INFO)
-    log_level = logging.DEBUG
+    log_format = "%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d: %(message)s"
+    log_level = getattr(logging, config.log_level.upper(), logging.INFO)
     handlers = [
         logging.StreamHandler(sys.stdout)
     ]
