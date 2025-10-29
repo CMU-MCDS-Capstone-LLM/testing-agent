@@ -1,15 +1,16 @@
 [tool.poetry]
-name = "cover-agent"
-version = "0.0.0" # Placeholder. Will be replaced by dynamic versioning.
-description = "Cover Agent Tool"
-authors = ["QodoAI <tal.r@codium.ai>"]
+name = "testing-agent"
+version = "0.1.0"
+description = "Testing Agent for Code Migration"
+authors = [
+  "Shanru Lin <shanrul@andrew.cmu.edu>",
+  "Xinyu Li <xinyuli4@andrew.cmu.edu>",
+]
 license = "Apache 2.0"
 readme = "README.md"
 
 # Define where your Python package(s) are
-packages = [
-    { include = "cover_agent" }
-]
+packages = [{ include = "testing_agent" }]
 
 [tool.poetry.dependencies]
 python = ">=3.9.17,<3.14"
@@ -26,7 +27,7 @@ openai = "^1.63.2"
 tiktoken = "^0.8.0"
 boto3 = "^1.36.25"
 google-cloud-aiplatform = "^1.81.0"
-numpy = "^1.26.4"   # Note: Earlier version have incompatibility issues with google-cloud-aiplatform
+numpy = "^1.26.4"                   # Note: Earlier version have incompatibility issues with google-cloud-aiplatform
 dynaconf = "^3.2.10"
 wandb = "^0.17.9"
 pyyaml = "^6.0.2"
@@ -35,7 +36,9 @@ pyyaml = "^6.0.2"
 grep_ast = "^0.3.3"
 tree_sitter = "^0.21.3"
 tree_sitter_languages = "^1.10.2"
-jedi-language-server = "^0.41.4"
+# jedi-language-server = "^0.41.4"
+jedi-language-server = "^0.41.3"
+lsp_repograph = { git = "https://github.com/CMU-MCDS-Capstone-LLM/LSP-Repograph.git@main" }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
@@ -47,16 +50,16 @@ pytest-timeout = "^2.3.1"
 fastapi = "^0.111.1"
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0"]
-build-backend = "poetry_dynamic_versioning.backend"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
-[tool.poetry.scripts]
-cover-agent = "cover_agent.main:main"
-cover-agent-full-repo = "cover_agent.main_full_repo:main"
-generate-report = "cover_agent.UnitTestDB:dump_to_report_cli"
+# [tool.poetry.scripts]
+# cover-agent = "cover_agent.main:main"
+# cover-agent-full-repo = "cover_agent.main_full_repo:main"
+# generate-report = "cover_agent.UnitTestDB:dump_to_report_cli"
 
-[tool.poetry-dynamic-versioning]
-enable = true
+# [tool.poetry-dynamic-versioning]
+# enable = true
 
-[tool.poetry-dynamic-versioning.from-file]
-source = "cover_agent/version.txt"
+# [tool.poetry-dynamic-versioning.from-file]
+# source = "cover_agent/version.txt"

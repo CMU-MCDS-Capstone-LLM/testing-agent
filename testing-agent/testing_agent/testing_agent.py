@@ -17,15 +17,14 @@ from typing import Iterable, List, Optional, Sequence, Set
 
 import yaml
 
-from cover_agent.CoverAgent import CoverAgent
-from cover_agent.Runner import LocalRunner, Runner
-from repograph_runner.repograph_selector import (
+from .cover_agent.CoverAgent import CoverAgent
+from .cover_agent.Runner import LocalRunner, Runner
+from testing_agent.repograph_runner.repograph_selector import (
     RepoGraphRequest,
     RepoGraphResult,
     RepoGraphRunner,
 )
-
-from testing_agent.config_loader import TestingAgentConfig
+from .config_loader import TestingAgentConfig
 
 import logging
 logger = logging.getLogger(__name__)
@@ -59,7 +58,8 @@ class TestingAgent:
             self.repograph_runner = repograph_runner
         else:
             self.repograph_runner = LocalRepoGraphRunner(
-                runner=self.test_executor,
+                # LocalRepoGraphRunner shouldn't use the local test executor, since repograph is not installed in repo env.
+                runner=LocalRunner([], {}),
                 timeout=self.config.max_run_time,
             )
 
@@ -549,7 +549,7 @@ class TestingAgent:
         cmd: List[str] = [
             str(self.config.repo_venv_python),
             "-m",
-            "cover_agent.main",
+            "testing_agent.cover_agent.main",
             "--source-file-path",
             str(source_path),
             "--test-file-path",
@@ -692,7 +692,7 @@ class LocalRepoGraphRunner(RepoGraphRunner):
     def __init__(
         self,
         runner: Runner,
-        module: str = "repograph_runner.repograph_selector",
+        module: str = "testing_agent.repograph_runner.repograph_selector",
         timeout: int = 600,
     ) -> None:
         self.runner = runner
@@ -709,8 +709,9 @@ class LocalRepoGraphRunner(RepoGraphRunner):
 
         # repograph_selector is not a module installed, so running python -m under repo path won't work
         cmd_parts.extend([
-            "/home/eiger/miniconda3/envs/pr-4_2025-10-27T08-49-00/bin/python", 
-            "/home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/testing-agent/repograph_runner/repograph_selector.py"
+            "python",
+            "-m",
+            self.module
         ])
         cmd_parts.extend(["--repo-path", str(request.repo_path)])
         cmd_parts.extend(["--config", str(request.migration_config)])
@@ -732,6 +733,7 @@ class LocalRepoGraphRunner(RepoGraphRunner):
             command=command,
             max_run_time=self.timeout,
             cwd=str(request.repo_path),
+            # cwd="."
         )
 
         if result.exit_code != 0:

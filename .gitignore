@@ -1,5 +1,6 @@
 *.py[cod]
 __pycache__/
+.pytest_cache/
 *.egg-info/
 build/
 dist/
@@ -17,3 +18,4 @@ testing-agent/repograph_runner/output/
 test_results.html
 *.db
 /**/tests/
+.envrc
