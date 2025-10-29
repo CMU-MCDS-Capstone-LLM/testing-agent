@@ -77,6 +77,7 @@ class TestingAgentConfig:
     repo_env_environment: Dict[str, str]
     log_file: Path
     log_level: str
+    cover_agent_log_db_path: Path
     config_path: Path
 
     @classmethod
@@ -247,6 +248,8 @@ class TestingAgentConfig:
         log_file = log_file.resolve()
         log_level = raw.get("log_level", "INFO")
 
+        cover_agent_log_db_path = raw.get("cover_agent_log_db_path")
+
         return cls(
             repo_name=repo_name,
             project_root=project_root,
@@ -279,5 +282,6 @@ class TestingAgentConfig:
             repo_env_environment=repo_env_environment,
             log_file=log_file,
             log_level=log_level,
+            cover_agent_log_db_path=cover_agent_log_db_path,
             config_path=config_path,
         )

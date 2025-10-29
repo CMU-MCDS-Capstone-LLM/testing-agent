@@ -572,6 +572,8 @@ class TestingAgent:
             self.config.additional_instructions,
             "--model",
             self.config.model,
+            "--log-db-path",
+            self.config.cover_agent_log_db_path,
         ]
 
         if self.config.api_base:
@@ -609,7 +611,7 @@ class TestingAgent:
             api_base=self.config.api_base or "",
             strict_coverage=False,
             run_tests_multiple_times=self.config.run_tests_multiple_times,
-            log_db_path="",
+            log_db_path=self.config.cover_agent_log_db_path,
             branch=self.config.branch,
             use_report_coverage_feature_flag=False,
             diff_coverage=self.config.diff_coverage,
