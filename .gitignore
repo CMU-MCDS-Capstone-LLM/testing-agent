@@ -19,3 +19,6 @@ test_results.html
 *.db
 /**/tests/
 .envrc
+
+demos/**/input-tests/
+demos/**/repos/
