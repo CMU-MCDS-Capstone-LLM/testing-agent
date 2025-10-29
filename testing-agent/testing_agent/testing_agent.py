@@ -27,6 +27,9 @@ from repograph_runner.repograph_selector import (
 
 from testing_agent.config_loader import TestingAgentConfig
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 AUTO_IMPORT_MARKER = "# [AUTO-IMPORTED FROM SOURCE] — do not edit below manually"
 
@@ -697,8 +700,16 @@ class LocalRepoGraphRunner(RepoGraphRunner):
     def run(self, request: RepoGraphRequest) -> RepoGraphResult:
         cmd_parts: List[str] = []
 
-        interpreter = str(request.env_python) if request.env_python else "python"
-        cmd_parts.extend([interpreter, "-m", self.module])
+        # interpreter = str(request.env_python) if request.env_python else "python"
+        # For local repograph runner, we use the same python as testing agent
+        # interpreter = "python"
+        # cmd_parts.extend([interpreter, "-m", self.module])
+
+        # repograph_selector is not a module installed, so running python -m under repo path won't work
+        cmd_parts.extend([
+            "/home/eiger/miniconda3/envs/pr-4_2025-10-27T08-49-00/bin/python", 
+            "/home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/testing-agent/repograph_runner/repograph_selector.py"
+        ])
         cmd_parts.extend(["--repo-path", str(request.repo_path)])
         cmd_parts.extend(["--config", str(request.migration_config)])
 
@@ -712,6 +723,9 @@ class LocalRepoGraphRunner(RepoGraphRunner):
             cmd_parts.extend(["--workspace-symbol", symbol])
 
         command = " ".join(shlex.quote(part) for part in cmd_parts)
+
+        logger.debug(f"LocalRepoGraphRunner.run() execute command '{command}'")
+
         result = self.runner.run_command(
             command=command,
             max_run_time=self.timeout,
