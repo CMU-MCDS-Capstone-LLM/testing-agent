@@ -35,7 +35,8 @@ Docker Compose can override these values with environment variables.
 | `TEST_COMMAND_DIR`          | Directory where tests are created/executed          | `/workspace/keep2roam/tests` |
 | `CODE_COVERAGE_REPORT_PATH` | Where to write the coverage XML report              | `/workspace/keep2roam/tests/coverage.xml` |
 | `TEST_REQUIREMENTS_FILE`    | Path to install test dependencies                   | `/workspace/keep2roam/requirements.txt` |
-| `OUTPUT_FILE`               | File to store the agent’s detailed output           | `/workspace/keep2roam/tests/testing_agent_output.txt` |
+| `HTML_REPORT_PATH`          | Optional HTML report path (leave empty to disable)  | `/workspace/keep2roam/tests/testing_agent_report.html` |
+| `LOG_FILE`                  | Path where run.sh stores stdout/stderr              | `/workspace/keep2roam/logs/testing_agent.log` |
 | `TEST_COMMAND`              | Command used to run tests                           | `pytest -q` |
 | `COVERAGE_TYPE`             | Coverage tool to use (e.g. `branch`, `line`)        | `line` |
 | `DESIRED_COVERAGE`          | Target coverage threshold (%)                       | `80` |
@@ -81,8 +82,9 @@ The container will:
 - Walk through each Python file under $PROJECT_ROOT.
 - Generate or reuse test files (tests/test_<source>.py).
 - Run the coverage agent until the desired threshold is reached.
-- Write logs to $OUTPUT_FILE.
+- Redirect stdout/stderr to the configured log file.
 
 ### 3. Inspect results
-- Detailed log: keep2roam/tests/testing_agent_output.txt
-- Coverage XML: keep2roam/tests/coverage.xml
+- Execution log: `logs/testing_agent.log`
+- Coverage XML: `tests/coverage.xml`
+- HTML report (optional): only if `HTML_REPORT_PATH` is set in the configuration

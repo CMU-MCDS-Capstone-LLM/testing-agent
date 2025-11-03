@@ -1,5 +1,6 @@
 *.py[cod]
 __pycache__/
+.pytest_cache/
 *.egg-info/
 build/
 dist/
@@ -16,3 +17,8 @@ migration/
 testing-agent/repograph_runner/output/
 test_results.html
 *.db
+/**/tests/
+.envrc
+
+demos/**/input-tests/
+demos/**/repos/
