@@ -11,6 +11,7 @@ import shlex
 import subprocess
 import tempfile
 import traceback
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Iterable, List, Optional, Sequence, Set
@@ -144,6 +145,20 @@ class TestingAgent:
     # RepoGraph & pytest argument computation
     # ------------------------------------------------------------------
     def _run_repograph(self) -> RepoGraphResult:
+        # Optional fast-path: reuse existing repograph result if allowed.
+        if os.environ.get("TA_REUSE_REPOGRAPH", "0") == "1" and self.config.selector_output_path.exists():
+            try:
+                cached = json.loads(self.config.selector_output_path.read_text(encoding="utf-8"))
+                return RepoGraphResult(
+                    source_module=cached.get("source", {}).get("module", "") or "",
+                    source_qualpath=cached.get("source", {}).get("qualpath"),
+                    library_consumers=cached.get("library_consumers", {}) or {},
+                    workspace_callers=cached.get("workspace_callers", {}) or {},
+                )
+            except Exception:
+                # Fallback to full run on cache parse error
+                pass
+
         workspace_symbols = tuple(
             str(sym)
             for sym in self.config.migration.get("workspace_symbols", []) or []
@@ -358,6 +373,30 @@ class TestingAgent:
         self.logger.info("Using custom test command: %s", raw_command)
         return raw_command
 
+    def _collect_banned_modules(self) -> List[str]:
+        banned: List[str] = []
+        migration = self.config.migration or {}
+
+        for key in ("source", "library_a", "libraryA", "library_b", "libraryB"):
+            value = migration.get(key)
+            if isinstance(value, str):
+                normalized = value.strip()
+                if normalized:
+                    banned.append(normalized)
+            elif isinstance(value, Iterable):
+                for item in value:
+                    item_str = str(item).strip()
+                    if item_str:
+                        banned.append(item_str)
+
+        unique: List[str] = []
+        seen: Set[str] = set()
+        for module in banned:
+            if module and module not in seen:
+                seen.add(module)
+                unique.append(module)
+        return unique
+
     # ------------------------------------------------------------------
     # File collection helpers
     # ------------------------------------------------------------------
@@ -404,9 +443,12 @@ class TestingAgent:
         if created:
             self._initialise_test_file(test_file, source_path, module_name)
 
-        import_block = self._extract_import_block(source_path)
-        if import_block:
-            self._ensure_import_block(test_file, import_block)
+        import_block = self._extract_import_block(source_path, module_name)
+        symbol_block = self._build_symbol_import_block(module_name, source_path)
+        combined_block_parts = [block for block in (import_block, symbol_block) if block]
+        combined_block = "\n".join(part for part in combined_block_parts if part.strip())
+        if combined_block:
+            self._ensure_import_block(test_file, combined_block)
 
         self._ensure_module_import_stub(test_file, module_name)
         self._run_cover_agent(source_path, test_file, included_files, test_command)
@@ -461,7 +503,10 @@ class TestingAgent:
         test_file.write_text(initial_content, encoding="utf-8")
         self.logger.info("Created new test file %s", test_file)
 
-    def _extract_import_block(self, source_path: Path) -> str:
+    def _is_aggregate_test_file(self, test_file: Path) -> bool:
+        return bool(self.aggregate_test_file) and test_file.resolve() == self.aggregate_test_file.resolve()
+
+    def _extract_import_block(self, source_path: Path, module_name: str) -> str:
         try:
             code = source_path.read_text(encoding="utf-8")
         except OSError as exc:
@@ -492,15 +537,68 @@ class TestingAgent:
 
         def rewrite(line: str) -> str:
             match = re.match(
-                r"^(\s*from\s+)(\.+)([A-Za-z_][\w\.]*)(\s+import\b.*)$",
+                r"^(\s*from\s+)(\.+)([A-Za-z_][\w\.]*)?(\s+import\b.*)$",
                 line,
             )
-            if match:
-                return f"{match.group(1)}{self.package_name}.{match.group(3)}{match.group(4)}"
-            return line
+            if not match:
+                return line
+
+            dots = match.group(2)
+            suffix = match.group(4)
+            rel_target = match.group(3) or ""
+
+            parts = module_name.split(".")
+            if len(parts) <= 1:
+                return line
+
+            level = len(dots)
+            if level > len(parts) - 1:
+                return line
+
+            base_parts = parts[: -(level)]
+            if rel_target:
+                base_parts.append(rel_target)
+            target_module = ".".join(base_parts)
+            return f"{match.group(1)}{target_module}{suffix}"
 
         rewritten = [rewrite(line) for line in collected if line.strip()]
         return "\n".join(rewritten)
+
+    def _extract_defined_symbols(self, source_path: Path) -> List[str]:
+        try:
+            code = source_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            self.logger.warning("Failed to read %s for symbol extraction: %s", source_path, exc)
+            return []
+
+        try:
+            tree = ast.parse(code, filename=str(source_path))
+        except SyntaxError as exc:
+            self.logger.warning("Unable to parse %s for symbol extraction: %s", source_path, exc)
+            return []
+
+        symbols: List[str] = []
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                if node.name.startswith("_"):
+                    continue
+                symbols.append(node.name)
+        return symbols
+
+    def _build_symbol_import_block(self, module_name: Optional[str], source_path: Path) -> str:
+        if not module_name:
+            return ""
+
+        symbols = sorted(set(self._extract_defined_symbols(source_path)))
+        if not symbols:
+            return ""
+
+        chunk_size = 4
+        lines: List[str] = []
+        for idx in range(0, len(symbols), chunk_size):
+            chunk = ", ".join(symbols[idx : idx + chunk_size])
+            lines.append(f"from {module_name} import {chunk}")
+        return "\n".join(lines)
 
     def _ensure_import_block(self, test_file: Path, import_block: str) -> None:
         try:
@@ -522,9 +620,9 @@ class TestingAgent:
                 if not additions:
                     return
                 updated = (
-                    lines[: marker_idx + 1]
+                    lines[:insert_idx]
                     + additions
-                    + lines[marker_idx + 1 :]
+                    + lines[insert_idx:]
                 )
                 test_file.write_text("\n".join(updated) + "\n", encoding="utf-8")
                 self.logger.info("Updated import block in %s", test_file)
@@ -579,6 +677,11 @@ class TestingAgent:
         if self.config.api_base:
             cmd.extend(["--api-base", self.config.api_base])
 
+        banned_modules = self._collect_banned_modules()
+        if banned_modules:
+            cmd.append("--banned-modules")
+            cmd.extend(sorted(set(banned_modules)))
+
         if included_files:
             cmd.append("--included-files")
             cmd.extend(str(path) for path in included_files)
@@ -616,6 +719,7 @@ class TestingAgent:
             use_report_coverage_feature_flag=False,
             diff_coverage=self.config.diff_coverage,
             run_each_test_separately=self.config.run_each_test_separately,
+            banned_modules=banned_modules,
         )
 
         divider = "=" * 38
@@ -702,17 +806,8 @@ class LocalRepoGraphRunner(RepoGraphRunner):
     def run(self, request: RepoGraphRequest) -> RepoGraphResult:
         cmd_parts: List[str] = []
 
-        # interpreter = str(request.env_python) if request.env_python else "python"
-        # For local repograph runner, we use the same python as testing agent
-        # interpreter = "python"
-        # cmd_parts.extend([interpreter, "-m", self.module])
-
-        # repograph_selector is not a module installed, so running python -m under repo path won't work
-        cmd_parts.extend([
-            "python",
-            "-m",
-            self.module
-        ])
+        interpreter = sys.executable  # ensure we use the testing-agent interpreter where module is installed
+        cmd_parts.extend([interpreter, "-m", self.module])
         cmd_parts.extend(["--repo-path", str(request.repo_path)])
         cmd_parts.extend(["--config", str(request.migration_config)])
 

@@ -1,20 +1,49 @@
 repo_name: adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282
 project_root_candidates:
-  - /home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/demos/keep2roam/tiny_data/repos/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282
+  - /Users/shanrulin/Desktop/testing-agent/demos/keep2roam/tiny_data/repos/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282
 # All types of metadata and logs will be written to this folder, such as coverage report, unit test db, etc.
-metadata_folder: /home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/demos/keep2roam/tiny_data/input-tests/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/
+metadata_folder: /Users/shanrulin/Desktop/testing-agent/demos/keep2roam/tiny_data/input-tests/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/
 code_coverage_report_path: coverage.xml
 test_command: pytest
 test_command_dir: tests
 coverage_type: cobertura
-desired_coverage: 10
-max_iterations: 3
-# model: gpt-4o-2024-08-06
-model: gpt-4o-mini-2024-07-18
+desired_coverage: 80
+max_iterations: 5
+model: gpt-4o-2024-08-06
+# model: gpt-4o-mini-2024-07-18
 api_base: https://ai-gateway.andrew.cmu.edu/
 max_run_time: 180
 additional_instructions:
-  "Only mock external dependencies; never patch functions or\
+  "When generating Helper Tests, you must treat the underlying library (Library A or Library B)
+  as invisible. Helper Tests should never import, reference, or depend on any concrete library.
+
+  Helper Tests must be:
+  - high-level and behavior-based,
+  - written only against the project’s public abstraction (functions/classes exposed by the repo),
+  - stable across migration (their behavior must hold both before and after library replacement).
+
+  A Helper Test cannot:
+  - import Library A,
+  - import Library B,
+  - assert any library-specific error messages,
+  - depend on parsing formats or behaviors unique to a certain library.
+
+  Instead, Helper Tests should target only library-independent invariants such as:
+  - default values,
+  - type conversions,
+  - return structure,
+  - stable flags or fields,
+  - presence/absence of required arguments,
+  - behavior that the project defines as part of its own abstraction.
+
+  Your goal is to generate tests that would pass on both:
+  (1) the original implementation (using Library A),
+  and
+  (2) the migrated implementation (using Library B).
+
+  Generate only abstraction-level behavior tests, never library-level tests.
+  
+  Only mock external dependencies; never patch functions or\
   \ classes defined inside the source file under test.\nLet the real implementation\
   \ run; patch file, network, or database I/O only when necessary, and patch each\
   \ target (for example, builtins.open) once per test.\n\nWhen you need path-like\
@@ -44,16 +73,16 @@ migration:
   source: argparse
   workspace_symbols: []
 repo_venv_python_candidates:
-  - /home/eiger/miniconda3/envs/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/bin/python
+  - /opt/anaconda3/envs/repo-env/bin/python
 pytest_cov_target: ""
 pytest_include_expr: ""
 pytest_exclude_expr: ""
-selector_output_path: /home/eiger/CMU/2025_Spring/11634_Capstone/codebase/testing-agent/demos/keep2roam/tiny_data/input-tests/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/repograph_result.json
+selector_output_path: /Users/shanrulin/Desktop/testing-agent/demos/keep2roam/tiny_data/input-tests/adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282/repograph_result.json
 run_tests_multiple_times: 1
 branch: main
 diff_coverage: false
 run_each_test_separately: false
 repo_env_pre_commands:
-  - source "/home/eiger/miniconda3/etc/profile.d/conda.sh"
-  - conda activate adithyabsk_keep2roam__d340eea2fdedde8908334eda34325d058fc88282
+  - source "/opt/anaconda3/etc/profile.d/conda.sh"
+  - conda activate repo-env
 repo_env_environment: {}

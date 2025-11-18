@@ -52,6 +52,9 @@ class CoverAgent:
         self.logger = logging.getLogger(__name__)
         self.command_runner = runner or LocalRunner()
 
+        if self.args.banned_modules is None:
+            self.args.banned_modules = []
+
         self._validate_paths()
         self._duplicate_test_file()
 
@@ -116,6 +119,7 @@ class CoverAgent:
             llm_model=args.model,
             use_report_coverage_feature_flag=args.use_report_coverage_feature_flag,
             agent_completion=self.agent_completion,
+            banned_modules=args.banned_modules,
         )
 
         # Initialize test validator with configuration
