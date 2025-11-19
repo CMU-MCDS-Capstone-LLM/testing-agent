@@ -19,10 +19,9 @@ class EnvMetadata:
 
     repo_id: str
     root: Path
-    helper_venv_path: Path
-    eval_venv_path: Path
-    python_path: Path
-    activate_commands: Dict[str, List[str]]
+    helper_image_name: str
+    eval_image_name: str
+    python_path: str  # Path to python in container (usually /usr/local/bin/python)
     environment: Dict[str, str]
     pip_deps: List[str]
     test_cmd: List[str]
@@ -31,18 +30,12 @@ class EnvMetadata:
     def to_dict(self) -> Dict[str, object]:
         payload = asdict(self)
         payload["root"] = str(self.root)
-        payload["helper_venv_path"] = str(self.helper_venv_path)
-        payload["eval_venv_path"] = str(self.eval_venv_path)
-        payload["python_path"] = str(self.python_path)
         return payload
 
     @classmethod
     def from_json(cls, path: Path) -> "EnvMetadata":
         data = json.loads(path.read_text(encoding="utf-8"))
         data["root"] = Path(data["root"])
-        data["helper_venv_path"] = Path(data["helper_venv_path"])
-        data["eval_venv_path"] = Path(data["eval_venv_path"])
-        data["python_path"] = Path(data["python_path"])
         return cls(**data)
 
 
@@ -228,8 +221,9 @@ def install_env(
     skip_editable: bool = False,
     skip_editable_on_error: bool = True,
     auto_fix_sqlite: bool = True,
+    env_mode: str = "helper",
 ) -> EnvMetadata:
-    """Create (or reuse) a virtual environment and install repo dependencies."""
+    """Build Docker images for repository testing environment."""
 
     decision = _load_decision_json(decision_path)
     variables: Dict[str, object] = decision.get("variables", {}) if isinstance(decision, dict) else {}
@@ -240,87 +234,83 @@ def install_env(
     env_vars: Dict[str, str] = {str(k): str(v) for k, v in (variables.get("env_vars", {}) or {}).items()}
 
     repo_path = repo_path.resolve()
-    helper_venv = (repo_path / ".venv_helper").resolve()
-    eval_venv = (repo_path / ".venv_eval").resolve()
 
-    python_version_tag = str(variables.get("python_version_tag", ""))
-    python_bin = _resolve_python_executable(
-        version_tag=python_version_tag,
-        explicit_python=python_executable,
-    )
+    # Find Dockerfile in envs directory
+    env_dir = decision_path.parent
+    dockerfile_path = env_dir / "Dockerfile"
+    if not dockerfile_path.exists():
+        raise EnvironmentError(f"Dockerfile not found at {dockerfile_path}")
 
-    def _ensure_venv(path: Path) -> None:
-        if force_recreate and path.exists():
-            shutil.rmtree(path)
-        if not path.exists():
-            _run([python_bin, "-m", "venv", str(path)])
+    # Docker image names
+    helper_image_name = f"{repo_id}:helper"
+    eval_image_name = f"{repo_id}:eval"
 
-    _ensure_venv(helper_venv)
-    if env_mode == "helper":
-        target_venv = helper_venv
-    else:
-        _ensure_venv(eval_venv)
-        if helper_venv.exists() and (force_recreate or not eval_venv.exists()):
-            if eval_venv.exists():
-                shutil.rmtree(eval_venv)
-            shutil.copytree(helper_venv, eval_venv)
-        target_venv = eval_venv
+    # Build helper image (always for helper mode, prerequisite for eval mode)
+    if env_mode == "helper" or not _docker_image_exists(helper_image_name):
+        print(f"Building Docker image: {helper_image_name}")
+        _run([
+            "sudo", "docker", "build",
+            "-f", str(dockerfile_path),
+            "-t", helper_image_name,
+            str(repo_path)  # Build context is the repo root
+        ])
+        print(f"✓ Built {helper_image_name}")
 
-    python_path = _detect_python_bin(target_venv)
-    if not python_path.exists():
-        raise EnvironmentError(
-            f"Unable to locate python binary in venv: {python_path}"
+        # Install lsp-repograph and jedi-language-server for repograph functionality
+        # lsp-repograph requires Python >= 3.8, so check version first
+        print(f"Checking Python version in {helper_image_name}...")
+        version_check = subprocess.run(
+            ["sudo", "docker", "run", "--rm", helper_image_name,
+             "python", "-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"],
+            capture_output=True,
+            text=True,
+            check=False
         )
 
-    command_env = os.environ.copy()
-    command_env.update(env_vars)
+        if version_check.returncode == 0:
+            py_version = version_check.stdout.strip()
+            py_major, py_minor = map(int, py_version.split('.'))
 
-    if auto_fix_sqlite and os.environ.get("AUTO_FIX_SQLITE", "1") == "1":
-        _ensure_sqlite(
-            python_path=python_path,
-            repo_id=repo_id,
-            repo_path=repo_path,
-            command_env=command_env,
-            auto_fix=True,
-        )
-
-    _run(
-        [str(python_path), "-m", "pip", "install", "--upgrade", "pip"],
-        cwd=repo_path,
-        env=command_env,
-    )
-    if pip_deps:
-        _run(
-            [str(python_path), "-m", "pip", "install", *pip_deps],
-            cwd=repo_path,
-            env=command_env,
-        )
-    if install_editable:
-        try:
-            _run(
-                [str(python_path), "-m", "pip", "install", "-e", "."],
-                cwd=repo_path,
-                env=command_env,
-            )
-        except subprocess.CalledProcessError as exc:
-            if skip_editable_on_error or os.environ.get("TA_SKIP_EDITABLE_ON_ERROR", "1") == "1":
-                print(
-                    f"[WARN] Editable install failed for {repo_id} ({repo_path}). "
-                    f"Skipping -e . to unblock setup. Error: {exc}"
-                )
+            if (py_major, py_minor) >= (3, 10):
+                print(f"Installing lsp-repograph into {helper_image_name} (Python {py_version})...")
+                temp_container_name = f"temp_{repo_id}_lsp_install"
+                try:
+                    # Run container to install lsp-repograph with compatible dependencies
+                    # Use --no-deps for lsp-repograph and manually install compatible versions
+                    _run([
+                        "sudo", "docker", "run", "--name", temp_container_name,
+                        helper_image_name,
+                        "bash", "-c",
+                        "pip install multilspy psutil toml jedi-language-server && "
+                        "pip install --no-deps git+https://github.com/CMU-MCDS-Capstone-LLM/LSP-Repograph.git@main"
+                    ])
+                    # Commit the container as the updated image
+                    _run(["sudo", "docker", "commit", temp_container_name, helper_image_name])
+                    print(f"✓ Installed lsp-repograph")
+                finally:
+                    # Clean up temporary container
+                    subprocess.run(
+                        ["sudo", "docker", "rm", "-f", temp_container_name],
+                        capture_output=True,
+                        check=False
+                    )
             else:
-                raise
+                print(f"⚠ Skipping lsp-repograph installation (Python {py_version} < 3.10 required)")
+    else:
+        print(f"Using existing Docker image: {helper_image_name}")
+
+    # For eval mode, we'll handle library swapping in run_repo.py
+    # Here we just note that eval image will be created on demand
+
+    # Python path in container (standard location for python:*-slim images)
+    python_path_in_container = "/usr/local/bin/python"
 
     metadata = EnvMetadata(
         repo_id=repo_id,
         root=repo_path,
-        helper_venv_path=helper_venv,
-        eval_venv_path=eval_venv,
-        python_path=python_path,
-        activate_commands={
-            "helper": _activate_commands_for(helper_venv),
-            "eval": _activate_commands_for(eval_venv),
-        },
+        helper_image_name=helper_image_name,
+        eval_image_name=eval_image_name,
+        python_path=python_path_in_container,
         environment=env_vars,
         pip_deps=pip_deps,
         test_cmd=test_cmd,
@@ -333,6 +323,20 @@ def install_env(
     metadata_path.write_text(json.dumps(metadata.to_dict(), indent=2), encoding="utf-8")
 
     return metadata
+
+
+def _docker_image_exists(image_name: str) -> bool:
+    """Check if a Docker image exists locally."""
+    try:
+        result = subprocess.run(
+            ["sudo", "docker", "images", "-q", image_name],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return bool(result.stdout.strip())
+    except subprocess.CalledProcessError:
+        return False
 
 
 def load_env_metadata(repo_path: Path) -> Optional[EnvMetadata]:
@@ -357,13 +361,11 @@ def main() -> None:
     args = parse_args()
     repo_path = Path(args.repo_path)
     decision_path = Path(args.decision_path)
-    venv_dir = Path(args.venv_dir).resolve() if args.venv_dir else None
 
     metadata = install_env(
         repo_id=args.repo_id,
         repo_path=repo_path,
         decision_path=decision_path,
-        venv_dir=venv_dir,
         python_executable=args.python,
         force_recreate=args.force,
     )

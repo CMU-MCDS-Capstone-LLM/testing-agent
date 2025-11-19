@@ -307,7 +307,10 @@ class UnitTestValidator:
         time_of_test_command = coverage_result.command_start_time
         assert (
             exit_code == 0
-        ), f'Fatal: Error running test command. Are you sure the command is correct? "{self.test_command}"\nExit code {exit_code}. \nStdout: \n{stdout} \nStderr: \n{stderr}'
+        ), (
+            f'Fatal: test command failed (exit code {exit_code}). Command: "{self.test_command}"\n'
+            f"Stdout: \n{stdout} \nStderr: \n{stderr}"
+        )
 
         try:
             # Process the extracted coverage metrics

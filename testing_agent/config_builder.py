@@ -16,7 +16,7 @@ DEFAULT_TEST_COMMAND = "pytest"
 DEFAULT_TEST_DIR = "."
 DEFAULT_AGG_TEST_FILE = "tests/test_additional.py"
 DEFAULT_API_BASE = "https://ai-gateway.andrew.cmu.edu/"
-DEFAULT_ADDITIONAL_INSTRUCTIONS = """When generating Helper Tests, you must treat the underlying libraries (Library A and Library B) as invisible. Helper Tests should never import, reference, or depend on those libraries directly.\n\nHelper Tests must be:\n- High-level and behavior-based.\n- Written only against the repo's public abstractions (functions/classes exposed by the project).\n- Stable across the migration (the same assertions must hold both before and after replacing the library).\n\nHelper Tests may not:\n- Import Library A or Library B.\n- Assert library-specific error messages.\n- Depend on parsing formats or behaviors unique to a specific library implementation.\n\nInstead, target library-independent invariants such as:\n- Default values and argument validation.\n- Type conversions and data structure shape.\n- Stable flags/fields and behavior defined by the project itself.\n- Presence/absence of required arguments or lifecycle hooks.\n\nYour tests must pass on both the original implementation (using Library A) and the migrated implementation (using Library B).\n\nMock external dependencies only; do not patch functions/classes defined in the source file under test. Let the real implementation run whenever possible. Patch file/network/DB I/O only when required, and patch each target at most once per test.\n\nWhen you need path-like objects, prefer real Path(...) instances. If you must mock path.joinpath(), assign a Mock to the return value and configure is_file() and suffix instead of chaining return_value assignments.\n\nImport helpers from the source module directly (e.g., `from convert import convert_file`) and call them by name. Avoid dotted calls like convert.convert(...). If the production code filters resources (Path.iterdir, os.listdir, etc.), configure mocks so the predicates remain true—return objects where is_file() is True and suffix equals '.json'. Whenever you mock domain objects, set every attribute or method that the production code touches, or build real instances via project utilities.\n\nFocus on uncovered lines in the latest coverage report and skip tests that only hit lines with existing coverage. Generate normal (happy-path) scenarios first, but include at least one exception-path test when those lines remain uncovered. Every proposed test must add new line or branch coverage; skip any test that duplicates prior behavior.\n\nWhen a module depends on mlflow or other external services, mock mlflow clients and helper utilities (e.g., `mlflow_tools.common.mlflow_utils.get_mlflow_host_token`, `mlflow_tools.export_import.utils.create_client`) so tests never require real credentials or network access. Assert that key client methods are invoked with expected arguments.\n\nAlways identify the specific module and function under test from the repograph output. For each target file, provide at least one success-path test and one failure-path test that prove the project's own behavior (copy/import/export, CLI commands, etc.).\n\nAvoid trivial "import" tests; each test should verify state changes, outputs, or error handling in the target module.\n"""
+DEFAULT_ADDITIONAL_INSTRUCTIONS = """When generating Helper Tests, you must treat the underlying libraries (Library A and Library B) as invisible. Helper Tests should never import, reference, or depend on those libraries directly.\n\nHelper Tests must be:\n- High-level and behavior-based.\n- Written only against the repo's public abstractions (functions/classes exposed by the project).\n- Stable across the migration (the same assertions must hold both before and after replacing the library).\n\nHelper Tests may not:\n- Import Library A or Library B.\n- Assert library-specific error messages.\n- Depend on parsing formats or behaviors unique to a specific library implementation.\n\nInstead, target library-independent invariants such as:\n- Default values and argument validation.\n- Type conversions and data structure shape.\n- Stable flags/fields and behavior defined by the project itself.\n- Presence/absence of required arguments or lifecycle hooks.\n\nYour tests must pass on both the original implementation (using Library A) and the migrated implementation (using Library B).\n\nMock external dependencies only; do not patch functions/classes defined in the source file under test. Let the real implementation run whenever possible. Patch file/network/DB I/O only when required, and patch each target at most once per test.\n\nWhen you need path-like objects, prefer real Path(...) instances. If you must mock path.joinpath(), assign a Mock to the return value and configure is_file() and suffix instead of chaining return_value assignments.\n\nImport helpers from the source module directly (e.g., `from convert import convert_file`) and call them by name. Avoid dotted calls like convert.convert(...). If the production code filters resources (Path.iterdir, os.listdir, etc.), configure mocks so the predicates remain true—return objects where is_file() is True and suffix equals '.json'. Whenever you mock domain objects, set every attribute or method that the production code touches, or build real instances via project utilities.\n\nFocus on uncovered lines in the latest coverage report and skip tests that only hit lines with existing coverage. Generate normal (happy-path) scenarios first, but include at least one exception-path test when those lines remain uncovered. Every proposed test must add new line or branch coverage; skip any test that duplicates prior behavior.\n\nWhen a module depends on mlflow or other external services, mock mlflow clients and helper utilities (e.g., `mlflow_tools.common.mlflow_utils.get_mlflow_host_token`, `mlflow_tools.export_import.utils.create_client`) so tests never require real credentials or network access. Assert that key client methods are invoked with expected arguments.\n\nAlways identify the specific module and function under test from the repograph output. For each target file, provide at least one success-path test and one failure-path test that prove the project's own behavior (copy/import/export, CLI commands, etc.).\n\nAvoid trivial "import" tests; each test should verify state changes, outputs, or error handling in the target module.\n\nIf a module has import-time side effects (network calls, client creation, or other setup executed at import), wrap imports in try/except and skip the test on failure instead of letting collection abort.\n"""
 
 
 def _load_yaml(path: Optional[Path]) -> Dict[str, Any]:
@@ -89,8 +89,31 @@ def build_config(
     config["code_coverage_report_path"] = str(metadata_dir / "coverage.xml")
     config["selector_output_path"] = str(metadata_dir / "repograph_result.json")
     config["aggregate_test_file"] = config.get("aggregate_test_file", DEFAULT_AGG_TEST_FILE)
+
+    # Get base test command from environment metadata
     command_from_env = " ".join(env_meta.test_cmd) if env_meta.test_cmd else DEFAULT_TEST_COMMAND
-    config["test_command"] = config.get("test_command", command_from_env)
+    base_test_command = config.get("test_command", command_from_env)
+
+    # Replace 'pytest' with 'python -m pytest' for Docker compatibility
+    # (pytest binary may not be in PATH inside Docker container)
+    if base_test_command.startswith("pytest ") or base_test_command == "pytest":
+        base_test_command = base_test_command.replace("pytest", "python -m pytest", 1)
+
+    # Wrap test command in docker run
+    docker_image = env_meta.eval_image_name if mode == "eval" else env_meta.helper_image_name
+    env_flags = ""
+    if env_meta.environment:
+        env_flags = " ".join([f"-e {k}={v}" for k, v in env_meta.environment.items()])
+
+    config["test_command"] = (
+        f"sudo docker run --rm "
+        f"-v {repo_path}:/workspace "
+        f"-w /workspace "
+        f"{env_flags} "
+        f"{docker_image} "
+        f"{base_test_command}"
+    ).strip()
+
     config["test_command_dir"] = config.get("test_command_dir", DEFAULT_TEST_DIR)
     config["coverage_type"] = config.get("coverage_type", "cobertura")
     config["desired_coverage"] = config.get("desired_coverage", 80)
@@ -127,14 +150,17 @@ def build_config(
             },
         )
 
-    helper_cmds = env_meta.activate_commands.get("helper")
-    eval_cmds = env_meta.activate_commands.get("eval")
-    config["repo_venv_python_candidates"] = [str(env_meta.python_path)]
-    if mode == "eval" and eval_cmds:
-        config["repo_env_pre_commands"] = eval_cmds
-    else:
-        config["repo_env_pre_commands"] = helper_cmds or []
+    # For Docker-based execution, we don't use activate commands
+    # The python_path here is the path inside the container
+    config["repo_venv_python_candidates"] = [env_meta.python_path]
+    config["repo_env_pre_commands"] = []  # No activation needed for Docker
     config["repo_env_environment"] = env_meta.environment
+
+    # Store Docker image info for test execution
+    if mode == "eval":
+        config["docker_image"] = env_meta.eval_image_name
+    else:
+        config["docker_image"] = env_meta.helper_image_name
 
     config.setdefault("pytest_cov_target", "")
     config.setdefault("pytest_include_expr", "")

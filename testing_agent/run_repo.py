@@ -212,38 +212,53 @@ def main() -> None:
     )
 
     if args.env_mode == "eval" and repo_yaml_path:
+        # For eval mode, create a new Docker image based on helper image
+        # with source library uninstalled and target library installed
         yaml_data = _load_repo_yaml(repo_yaml_path)
         source_pkg = (yaml_data or {}).get("source")
         target_pkg = (yaml_data or {}).get("target")
-        env = os.environ.copy()
-        env.update(env_metadata.environment)
-        if source_pkg:
+
+        if source_pkg or target_pkg:
+            print(f"Creating eval Docker image: {env_metadata.eval_image_name}")
+
+            # Build pip commands for library migration
+            pip_commands = []
+            if source_pkg:
+                pip_commands.append(f"pip uninstall -y {source_pkg}")
+            if target_pkg:
+                pip_commands.append(f"pip install {target_pkg}")
+
+            # Combine commands
+            command = " && ".join(pip_commands)
+
+            # Run command in helper container and commit as eval image
             subprocess.run(
                 [
-                    str(env_metadata.python_path),
-                    "-m",
-                    "pip",
-                    "uninstall",
-                    "-y",
-                    source_pkg,
+                    "sudo", "docker", "run",
+                    "--name", f"temp_{resolved_repo_id}_eval",
+                    env_metadata.helper_image_name,
+                    "bash", "-c", command
                 ],
-                check=False,
-                cwd=str(repo_path),
-                env=env,
+                check=True
             )
-        if target_pkg:
+
+            # Commit the container as eval image
             subprocess.run(
                 [
-                    str(env_metadata.python_path),
-                    "-m",
-                    "pip",
-                    "install",
-                    target_pkg,
+                    "sudo", "docker", "commit",
+                    f"temp_{resolved_repo_id}_eval",
+                    env_metadata.eval_image_name
                 ],
-                check=True,
-                cwd=str(repo_path),
-                env=env,
+                check=True
             )
+
+            # Remove temporary container
+            subprocess.run(
+                ["sudo", "docker", "rm", f"temp_{resolved_repo_id}_eval"],
+                check=False
+            )
+
+            print(f"✓ Created {env_metadata.eval_image_name}")
 
     base_config = _load_yaml(Path(args.base_config)) if args.base_config else None
 

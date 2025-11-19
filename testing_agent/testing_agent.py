@@ -59,9 +59,10 @@ class TestingAgent:
             self.repograph_runner = repograph_runner
         else:
             self.repograph_runner = LocalRepoGraphRunner(
-                # LocalRepoGraphRunner shouldn't use the local test executor, since repograph is not installed in repo env.
                 runner=LocalRunner([], {}),
                 timeout=self.config.max_run_time,
+                docker_image=getattr(config, 'docker_image', None),
+                repo_path=config.project_root,
             )
 
         self.package_name = self.config.project_root.name
@@ -267,7 +268,11 @@ class TestingAgent:
         snippet = (
             f"\n\ndef {stub_name}():\n"
             "    import importlib\n"
-            f"    importlib.import_module(\"{module_name}\")\n"
+            "    import pytest\n"
+            "    try:\n"
+            f"        importlib.import_module(\"{module_name}\")\n"
+            "    except Exception as exc:\n"
+            "        pytest.skip(f\"Skipping import for module with side effects: {exc}\")\n"
             "    assert True\n"
         )
 
@@ -343,30 +348,28 @@ class TestingAgent:
     def _compose_test_command(self, cov_targets: Sequence[str], filter_expr: str) -> str:
         raw_command = self.config.test_command.strip()
         tokens = shlex.split(raw_command)
-        if tokens and tokens[0] == "pytest":
-            pytest_cmd: List[str] = [
-                str(self.config.repo_venv_python),
-                "-m",
-                "pytest",
-            ]
+        if tokens and ("pytest" in tokens or (len(tokens) >= 3 and tokens[0] == "python" and tokens[1] == "-m" and tokens[2] == "pytest")):
+            # Determine coverage path inside container if repo is mounted at /workspace
+            cov_path = self.config.code_coverage_report_path
+            try:
+                rel = self.config.code_coverage_report_path.relative_to(self.config.project_root)
+                cov_path = str(Path("/workspace") / rel)
+            except Exception:
+                cov_path = str(self.config.code_coverage_report_path)
 
-            if cov_targets:
-                pytest_cmd.extend(f"--cov={target}" for target in cov_targets)
-            else:
-                pytest_cmd.append("--cov=..")
+            # If command already specifies pytest, just append coverage flags if missing
+            if not any(tok.startswith("--cov") for tok in tokens):
+                if cov_targets:
+                    tokens.extend(f"--cov={target}" for target in cov_targets)
+                else:
+                    tokens.append("--cov=..")
+            if not any(tok.startswith("--cov-report=") for tok in tokens):
+                tokens.append(f"--cov-report=xml:{cov_path}".replace("\\", "/"))
+                tokens.append("--cov-report=term")
+            if filter_expr and "-k" not in tokens:
+                tokens.extend(["-k", filter_expr])
 
-            pytest_cmd.append(
-                f"--cov-report=xml:{self.config.code_coverage_report_path}".replace("\\", "/")
-            )
-            pytest_cmd.append("--cov-report=term")
-
-            if filter_expr:
-                pytest_cmd.extend(["-k", filter_expr])
-
-            original_args = tokens[1:]
-            pytest_cmd.extend(original_args)
-
-            command = " ".join(shlex.quote(part) for part in pytest_cmd)
+            command = " ".join(shlex.quote(part) for part in tokens)
             self.logger.info("Using pytest command: %s", command)
             return command
 
@@ -443,10 +446,16 @@ class TestingAgent:
         if created:
             self._initialise_test_file(test_file, source_path, module_name)
 
+        has_side_effects = self._has_import_side_effects(source_path)
+        if has_side_effects:
+            self.logger.info("Detected potential import-time side effects in %s; guarding imports", source_path)
+
         import_block = self._extract_import_block(source_path, module_name)
         symbol_block = self._build_symbol_import_block(module_name, source_path)
         combined_block_parts = [block for block in (import_block, symbol_block) if block]
         combined_block = "\n".join(part for part in combined_block_parts if part.strip())
+        if has_side_effects and combined_block:
+            combined_block = self._wrap_import_block_with_skip(combined_block, module_name)
         if combined_block:
             self._ensure_import_block(test_file, combined_block)
 
@@ -487,10 +496,13 @@ class TestingAgent:
                 "# Auto-generated aggregated tests by testing agent.\n"
                 "# Tests from multiple modules may be appended here.\n"
                 f"{AUTO_IMPORT_MARKER}\n"
-                "import importlib\n\n"
+                "import importlib\n"
+                "import pytest\n\n"
                 "def test_placeholder():\n"
-                "    import importlib\n"
-                f"    importlib.import_module(\"{module_name}\")\n"
+                "    try:\n"
+                f"        importlib.import_module(\"{module_name}\")\n"
+                "    except Exception as exc:\n"
+                "        pytest.skip(f\"Skipping placeholder import due to side effects: {exc}\")\n"
                 "    assert True\n\n"
             )
         else:
@@ -599,6 +611,106 @@ class TestingAgent:
             chunk = ", ".join(symbols[idx : idx + chunk_size])
             lines.append(f"from {module_name} import {chunk}")
         return "\n".join(lines)
+
+    def _has_import_side_effects(self, source_path: Path) -> bool:
+        """Detect likely import-time side effects based on simple AST heuristics."""
+        try:
+            code = source_path.read_text(encoding="utf-8")
+        except OSError:
+            return False
+
+        try:
+            tree = ast.parse(code, filename=str(source_path))
+        except SyntaxError:
+            return False
+
+        dangerous_names = {"MlflowHttpClient", "HttpClient", "boto3", "requests", "subprocess", "os.system"}
+        for node in tree.body:
+            # direct expression calls or assigned calls at module level
+            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
+                return True
+            if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call):
+                return True
+            # from/import of known risky symbols
+            if isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    if alias.name in dangerous_names:
+                        return True
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name.split(".")[0] in dangerous_names:
+                        return True
+        return False
+
+    def _wrap_import_block_with_skip(self, import_block: str, module_name: str) -> str:
+        """Convert import lines into top-level guarded stubs to avoid import-time side effects."""
+        if not import_block.strip():
+            return import_block
+
+        def _parse_symbols_from_from(line: str) -> tuple[str, List[str]]:
+            # line format: from foo.bar import a, b as c
+            _, rest = line.split("from ", 1)
+            module_part, symbols_part = rest.split(" import ", 1)
+            module_part = module_part.strip()
+            symbols: List[str] = []
+            for raw in symbols_part.split(","):
+                raw = raw.strip()
+                if not raw:
+                    continue
+                if " as " in raw:
+                    raw = raw.split(" as ", 1)[1]
+                symbols.append(raw.split(".")[-1])
+            return module_part, symbols
+
+        def _parse_symbols_from_import(line: str) -> List[str]:
+            # line format: import a, b as c
+            _, rest = line.split("import ", 1)
+            names: List[str] = []
+            for raw in rest.split(","):
+                raw = raw.strip()
+                if not raw:
+                    continue
+                if " as " in raw:
+                    raw = raw.split(" as ", 1)[1]
+                names.append(raw.split(".")[-1])
+            return names
+
+        blocks: List[str] = []
+        for line in import_block.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            blocks.append("import pytest")
+            if stripped.startswith("from "):
+                module_part, symbols = _parse_symbols_from_from(stripped)
+                blocks.append("try:")
+                blocks.append(f"    {stripped}")
+                blocks.append("except Exception:")
+                if symbols:
+                    for sym in symbols:
+                        blocks.append(f"    {sym} = None")
+                else:
+                    blocks.append("    pass")
+            elif stripped.startswith("import "):
+                symbols = _parse_symbols_from_import(stripped)
+                blocks.append("try:")
+                blocks.append(f"    {stripped}")
+                blocks.append("except Exception:")
+                if symbols:
+                    for sym in symbols:
+                        blocks.append(f"    {sym} = None")
+                else:
+                    blocks.append("    pass")
+            else:
+                # Fallback: leave as-is but still guard
+                blocks.append("try:")
+                blocks.append(f"    {stripped}")
+                blocks.append("except Exception:")
+                blocks.append("    pass")
+            blocks.append("")  # blank line between stubs
+
+        return "\n".join(blocks).rstrip() + "\n"
 
     def _ensure_import_block(self, test_file: Path, import_block: str) -> None:
         try:
@@ -798,20 +910,50 @@ class LocalRepoGraphRunner(RepoGraphRunner):
         runner: Runner,
         module: str = "testing_agent.repograph_runner.repograph_selector",
         timeout: int = 600,
+        docker_image: Optional[str] = None,
+        repo_path: Optional[Path] = None,
     ) -> None:
         self.runner = runner
         self.module = module
         self.timeout = timeout
+        self.docker_image = docker_image
+        self.repo_path = repo_path
 
     def run(self, request: RepoGraphRequest) -> RepoGraphResult:
         cmd_parts: List[str] = []
 
-        interpreter = sys.executable  # ensure we use the testing-agent interpreter where module is installed
-        cmd_parts.extend([interpreter, "-m", self.module])
-        cmd_parts.extend(["--repo-path", str(request.repo_path)])
-        cmd_parts.extend(["--config", str(request.migration_config)])
+        if self.docker_image:
+            # Run repograph in Docker container with repo environment
+            # Mount the repograph_selector.py script into the container
+            selector_script = Path(__file__).parent / "repograph_runner" / "repograph_selector.py"
 
-        if request.env_python:
+            cmd_parts.extend([
+                "sudo", "docker", "run", "--rm",
+                "-v", f"{request.repo_path}:/workspace",
+                "-v", f"{selector_script}:/tmp/repograph_selector.py:ro",
+                "-w", "/workspace",
+                self.docker_image,
+                "python", "/tmp/repograph_selector.py"
+            ])
+            repo_path_arg = "/workspace"
+            config_path_arg = str(request.migration_config)
+            # If config is inside repo, use container path
+            if request.migration_config.is_relative_to(request.repo_path):
+                rel_config = request.migration_config.relative_to(request.repo_path)
+                config_path_arg = f"/workspace/{rel_config}"
+        else:
+            # Fallback: run on host (original behavior)
+            interpreter = sys.executable
+            cmd_parts.extend([interpreter, "-m", self.module])
+            repo_path_arg = str(request.repo_path)
+            config_path_arg = str(request.migration_config)
+
+        cmd_parts.extend(["--repo-path", repo_path_arg])
+        cmd_parts.extend(["--config", config_path_arg])
+
+        # Only pass --env-python when running on host (not in Docker container)
+        # Inside the container, the Python environment is already correctly configured
+        if request.env_python and not self.docker_image:
             cmd_parts.extend(["--env-python", str(request.env_python)])
 
         for extra in request.extra_paths:

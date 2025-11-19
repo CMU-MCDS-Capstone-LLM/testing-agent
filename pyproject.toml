@@ -38,7 +38,7 @@ tree_sitter = "^0.21.3"
 tree_sitter_languages = "^1.10.2"
 # jedi-language-server = "^0.41.4"
 jedi-language-server = "^0.41.3"
-lsp_repograph = { git = "https://github.com/CMU-MCDS-Capstone-LLM/LSP-Repograph.git@main" }
+lsp-repograph = { git = "https://github.com/CMU-MCDS-Capstone-LLM/LSP-Repograph.git", branch = "main" }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
