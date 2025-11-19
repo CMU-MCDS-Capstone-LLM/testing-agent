@@ -90,8 +90,8 @@ def build_config(
     config["selector_output_path"] = str(metadata_dir / "repograph_result.json")
     config["aggregate_test_file"] = config.get("aggregate_test_file", DEFAULT_AGG_TEST_FILE)
 
-    # Get base test command from environment metadata
-    command_from_env = " ".join(env_meta.test_cmd) if env_meta.test_cmd else DEFAULT_TEST_COMMAND
+    # Force pytest-based test command regardless of legacy env metadata defaults.
+    command_from_env = "python -m pytest -v tests/"
     base_test_command = config.get("test_command", command_from_env)
 
     # Replace 'pytest' with 'python -m pytest' for Docker compatibility

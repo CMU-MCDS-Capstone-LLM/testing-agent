@@ -228,9 +228,15 @@ def install_env(
     decision = _load_decision_json(decision_path)
     variables: Dict[str, object] = decision.get("variables", {}) if isinstance(decision, dict) else {}
     pip_deps: List[str] = list(variables.get("pip_deps", []) or [])
-    pip_deps.extend(["pytest-cov", "pytest-mock"])
+    # Always ensure pytest + coverage helpers available; ignore decision-provided test_cmd when choosing deps.
+    for dep in ("pytest", "pytest-cov", "pytest-mock"):
+        if dep not in pip_deps:
+            pip_deps.append(dep)
+
     install_editable = bool(variables.get("install_editable", False)) and not skip_editable
-    test_cmd: List[str] = list(variables.get("test_cmd", []) or [])
+
+    # Force pytest-based default test command; do not inherit decision.json test_cmd to avoid legacy/coverage-only commands.
+    test_cmd: List[str] = ["python", "-m", "pytest", "-v", "tests/"]
     env_vars: Dict[str, str] = {str(k): str(v) for k, v in (variables.get("env_vars", {}) or {}).items()}
 
     repo_path = repo_path.resolve()
@@ -271,31 +277,74 @@ def install_env(
             py_version = version_check.stdout.strip()
             py_major, py_minor = map(int, py_version.split('.'))
 
-            if (py_major, py_minor) >= (3, 10):
-                print(f"Installing lsp-repograph into {helper_image_name} (Python {py_version})...")
-                temp_container_name = f"temp_{repo_id}_lsp_install"
-                try:
-                    # Run container to install lsp-repograph with compatible dependencies
-                    # Use --no-deps for lsp-repograph and manually install compatible versions
-                    _run([
-                        "sudo", "docker", "run", "--name", temp_container_name,
+            # Install Python 3.11 and lsp-repograph for all Python versions
+            print(f"Installing Python 3.11 and lsp-repograph into {helper_image_name} (base Python {py_version})...")
+            temp_container_name = f"temp_{repo_id}_lsp_install"
+            try:
+                # Install Python 3.11 and lsp-repograph
+                # Python 3.11 will be used for running repograph, base Python for repo tests
+                _run([
+                    "sudo", "docker", "run", "--name", temp_container_name, "--user", "root",
+                    helper_image_name,
+                    "bash", "-c",
+                    # Install Python 3.11 and pip
+                    "apt-get update && "
+                    "apt-get install -y --no-install-recommends python3.11 python3.11-distutils python3-pip wget && "
+                    "rm -rf /var/lib/apt/lists/* && "
+                    # Install pip for Python 3.11 (using --break-system-packages to bypass PEP 668)
+                    "wget -q https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py && "
+                    "python3.11 /tmp/get-pip.py --break-system-packages && "
+                    "rm /tmp/get-pip.py && "
+                    # Install lsp-repograph dependencies in Python 3.11
+                    "python3.11 -m pip install --break-system-packages multilspy psutil toml jedi-language-server && "
+                    "python3.11 -m pip install --break-system-packages --no-deps git+https://github.com/CMU-MCDS-Capstone-LLM/LSP-Repograph.git@main"
+                ])
+                # Commit the container as the updated image
+                _run(["sudo", "docker", "commit", temp_container_name, helper_image_name])
+                print(f"✓ Installed Python 3.11 and lsp-repograph")
+            finally:
+                # Clean up temporary container
+                subprocess.run(
+                    ["sudo", "docker", "rm", "-f", temp_container_name],
+                    capture_output=True,
+                    check=False
+                )
+
+        # Always ensure pytest is available in the helper image (for coverage collection)
+        print(f"Ensuring pytest is installed in {helper_image_name}...")
+        pytest_check = subprocess.run(
+            ["sudo", "docker", "run", "--rm", helper_image_name, "python", "-c", "import pytest"],  # noqa: S603
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if pytest_check.returncode != 0:
+            print("Installing pytest/pytest-cov into helper image...")
+            temp_container_name = f"temp_{repo_id}_pytest"
+            try:
+                _run(
+                    [
+                        "sudo",
+                        "docker",
+                        "run",
+                        "--name",
+                        temp_container_name,
+                        "--user",
+                        "root",
                         helper_image_name,
-                        "bash", "-c",
-                        "pip install multilspy psutil toml jedi-language-server && "
-                        "pip install --no-deps git+https://github.com/CMU-MCDS-Capstone-LLM/LSP-Repograph.git@main"
-                    ])
-                    # Commit the container as the updated image
-                    _run(["sudo", "docker", "commit", temp_container_name, helper_image_name])
-                    print(f"✓ Installed lsp-repograph")
-                finally:
-                    # Clean up temporary container
-                    subprocess.run(
-                        ["sudo", "docker", "rm", "-f", temp_container_name],
-                        capture_output=True,
-                        check=False
-                    )
-            else:
-                print(f"⚠ Skipping lsp-repograph installation (Python {py_version} < 3.10 required)")
+                        "bash",
+                        "-c",
+                        "pip install pytest pytest-cov pytest-mock || python -m pip install pytest pytest-cov pytest-mock",
+                    ]
+                )
+                _run(["sudo", "docker", "commit", temp_container_name, helper_image_name])
+                print("✓ Installed pytest/pytest-cov in helper image")
+            finally:
+                subprocess.run(
+                    ["sudo", "docker", "rm", "-f", temp_container_name],
+                    capture_output=True,
+                    check=False,
+                )
     else:
         print(f"Using existing Docker image: {helper_image_name}")
 

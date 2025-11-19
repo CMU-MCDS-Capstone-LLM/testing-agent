@@ -933,7 +933,7 @@ class LocalRepoGraphRunner(RepoGraphRunner):
                 "-v", f"{selector_script}:/tmp/repograph_selector.py:ro",
                 "-w", "/workspace",
                 self.docker_image,
-                "python", "/tmp/repograph_selector.py"
+                "python3.11", "/tmp/repograph_selector.py"
             ])
             repo_path_arg = "/workspace"
             config_path_arg = str(request.migration_config)
