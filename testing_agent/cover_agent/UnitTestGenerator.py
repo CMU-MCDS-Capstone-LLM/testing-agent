@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import ast
 import json
 import os
 import re
 import logging
 #{
-from typing import Set
+from typing import Iterable, Set
 #}
 from testing_agent.cover_agent.FilePreprocessor import FilePreprocessor
 from testing_agent.cover_agent.AgentCompletionABC import AgentCompletionABC
@@ -29,6 +31,7 @@ class UnitTestGenerator:
         additional_instructions: str = "",
         use_report_coverage_feature_flag: bool = False,
         project_root: str = "",
+        banned_modules: Iterable[str] | None = None,
     ):
         """
         Initialize the UnitTestGenerator class with the provided parameters.
@@ -68,6 +71,11 @@ class UnitTestGenerator:
         self.last_coverage_percentages = {}
         self.llm_model = llm_model
         self.agent_completion = agent_completion
+        self.banned_modules = {
+            module.strip()
+            for module in (banned_modules or [])
+            if str(module).strip()
+        }
 
         self.logger = logging.getLogger(__name__)
 
@@ -318,6 +326,7 @@ class UnitTestGenerator:
             Exception: If there is an error during test generation, such as a parsing error while processing the AI model response.
         """
         failed_test_runs_value = self.check_for_failed_test_runs(failed_test_runs)
+        effective_instructions = self._compose_effective_instructions()
         response, prompt_token_count, response_token_count, self.prompt = (
             self.agent_completion.generate_tests(
                 source_file_name=os.path.relpath(
@@ -329,7 +338,7 @@ class UnitTestGenerator:
                     for i, line in enumerate(self.source_code.split("\n"))
                 ),
                 code_coverage_report=code_coverage_report,
-                additional_instructions_text=self.additional_instructions,
+                additional_instructions_text=effective_instructions,
                 additional_includes_section=self.included_files,
                 language=language,
                 test_file=self.test_code,
@@ -372,6 +381,12 @@ class UnitTestGenerator:
         else:
             candidate_tests = tests_dict
 
+        proposed_count = len(candidate_tests or [])
+        self.logger.info("LLM proposed %d candidate tests", proposed_count)
+
+        filtered_tests = []
+        banned_hits = 0
+
         for generated_test in candidate_tests or []:
             test_code_snippet = generated_test.get("test_code", "")
             if not test_code_snippet:
@@ -382,25 +397,26 @@ class UnitTestGenerator:
             )
             generated_test["test_code"] = test_code_snippet
 
-            (
-                test_code_snippet,
-                alias_needed,
-            ) = self._qualify_source_references_with_module_alias(
-                test_code_snippet=test_code_snippet,
-                module_name=module_alias,
-                alias_name=module_alias_name,
+            if self.banned_modules and self._mentions_banned_modules(
+                test_code_snippet, generated_test.get("new_imports_code", "")
+            ):
+                banned_hits += 1
+                self.logger.warning(
+                    "Generated test '%s' imports banned modules (%s). Keeping it for inspection.",
+                    generated_test.get("test_name", "<unnamed>"),
+                    ", ".join(sorted(self.banned_modules)),
+                )
+
+            generated_test["new_imports_code"] = self._filter_banned_imports(
+                generated_test.get("new_imports_code", ""),
+                banned_aliases={module_alias_name},
             )
 
-            if alias_needed and module_alias_name not in existing_imported_symbols:
-                alias_import_line = f"import {module_import_path} as {module_alias_name}"
-                generated_test["new_imports_code"] = self._merge_import_lines(
-                    generated_test.get("new_imports_code", ""),
-                    {alias_import_line},
-                )
-                existing_imported_symbols.add(module_alias_name)
-
-            if alias_needed:
-                generated_test["test_code"] = test_code_snippet
+            test_code_snippet = self._normalize_source_references(
+                test_code_snippet=test_code_snippet,
+                module_identifiers={module_alias, module_alias_name, module_import_path.split(".")[-1]},
+            )
+            generated_test["test_code"] = test_code_snippet
 
             referenced_symbols = self._extract_called_source_names(test_code_snippet)
             if not referenced_symbols:
@@ -418,6 +434,7 @@ class UnitTestGenerator:
             }
 
             if not missing_symbols:
+                filtered_tests.append(generated_test)
                 continue
 
             import_lines = {
@@ -425,11 +442,28 @@ class UnitTestGenerator:
                 for symbol in missing_symbols
             }
 
-            generated_test["new_imports_code"] = self._merge_import_lines(
+            merged_imports = self._merge_import_lines(
                 generated_test.get("new_imports_code", ""), import_lines
+            )
+            generated_test["new_imports_code"] = self._filter_banned_imports(
+                merged_imports, banned_aliases={module_alias_name}
             )
 
             existing_imported_symbols.update(missing_symbols)
+
+            filtered_tests.append(generated_test)
+
+        self.logger.info(
+            "After normalization, %d/%d tests remain (banned hits: %d)",
+            len(filtered_tests),
+            proposed_count,
+            banned_hits,
+        )
+
+        if isinstance(tests_dict, dict):
+            tests_dict["new_tests"] = filtered_tests
+        else:
+            tests_dict = filtered_tests
         #}
         return tests_dict
 
@@ -520,28 +554,27 @@ class UnitTestGenerator:
 
         return "\n".join(new_lines)
 
-    def _qualify_source_references_with_module_alias(
-        self, test_code_snippet: str, module_name: str, alias_name: str
-    ) -> tuple[str, bool]:
-        """Rewrite calls into module-qualified references when needed."""
+    def _normalize_source_references(
+        self, test_code_snippet: str, module_identifiers: Set[str]
+    ) -> str:
+        """Drop module qualifiers so helpers are called directly by name."""
+        if not module_identifiers:
+            return test_code_snippet
+
         try:
             tree = ast.parse(test_code_snippet, type_comments=True)
         except SyntaxError:
-            return test_code_snippet, False
+            return test_code_snippet
 
         lines = test_code_snippet.splitlines(keepends=True)
         if not lines:
-            return test_code_snippet, False
+            return test_code_snippet
 
-        line_offsets = []
+        line_offsets: list[int] = []
         total = 0
         for line in lines:
             line_offsets.append(total)
             total += len(line)
-
-        replacements: list[tuple[int, int, str]] = []
-        alias_needed = False
-        source_symbols = self.source_defined_symbols
 
         def node_offsets(node: ast.AST) -> tuple[int, int] | None:
             if not (
@@ -555,40 +588,25 @@ class UnitTestGenerator:
             end = line_offsets[node.end_lineno - 1] + node.end_col_offset
             return start, end
 
-        class _Collector(ast.NodeVisitor):
-            def visit_Call(self, node):
-                nonlocal alias_needed
-                if isinstance(node.func, ast.Name):
-                    func_name = node.func.id
-                    if func_name in source_symbols:
-                        offsets = node_offsets(node.func)
-                        if offsets:
-                            start, end = offsets
-                            replacements.append(
-                                (start, end, f"{alias_name}.{func_name}")
-                            )
-                            alias_needed = True
-                self.generic_visit(node)
+        replacements: list[tuple[int, int, str]] = []
 
+        class _Collector(ast.NodeVisitor):
             def visit_Attribute(self, node):
-                nonlocal alias_needed
                 if (
                     isinstance(node.value, ast.Name)
-                    and node.value.id == module_name
+                    and node.value.id in module_identifiers
                 ):
-                    offsets = node_offsets(node.value)
+                    offsets = node_offsets(node)
                     if offsets:
                         start, end = offsets
-                        replacements.append((start, end, alias_name))
-                        alias_needed = True
+                        replacements.append((start, end, node.attr))
                 self.generic_visit(node)
 
         _Collector().visit(tree)
 
         if not replacements:
-            return test_code_snippet, False
+            return test_code_snippet
 
-        # Deduplicate overlapping replacements by keeping the last occurrence per span.
         unique_replacements: dict[tuple[int, int], str] = {}
         for start, end, text in replacements:
             unique_replacements[(start, end)] = text
@@ -599,4 +617,85 @@ class UnitTestGenerator:
         ):
             new_code = new_code[:start] + text + new_code[end:]
 
-        return new_code, alias_needed
+        return new_code
+
+    def _mentions_banned_modules(self, *code_snippets: str) -> bool:
+        if not self.banned_modules:
+            return False
+        return any(
+            self._code_mentions_banned_module(snippet)
+            for snippet in code_snippets
+            if snippet
+        )
+
+    def _code_mentions_banned_module(self, code_snippet: str) -> bool:
+        if not code_snippet:
+            return False
+        try:
+            tree = ast.parse(code_snippet, type_comments=True)
+        except SyntaxError:
+            lowered = code_snippet
+            return any(
+                f"import {module}" in lowered or f"from {module}" in lowered
+                for module in self.banned_modules
+            )
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    root = alias.name.split(".")[0]
+                    if root in self.banned_modules:
+                        return True
+            elif isinstance(node, ast.ImportFrom):
+                if node.module and node.module.split(".")[0] in self.banned_modules:
+                    return True
+        return False
+
+    @staticmethod
+    def _filter_banned_imports(
+        import_block: str, banned_aliases: Set[str]
+    ) -> str:
+        if not import_block:
+            return import_block
+
+        filtered_lines: list[str] = []
+        for line in import_block.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if any(f" as {alias}" in stripped for alias in banned_aliases):
+                continue
+            filtered_lines.append(stripped)
+        return "\n".join(filtered_lines)
+
+    def _compose_effective_instructions(self) -> str:
+        base = (self.additional_instructions or "").strip()
+        supplements: list[str] = []
+
+        if self.banned_modules:
+            modules_str = ", ".join(sorted(self.banned_modules))
+            supplements.append(
+                "Do not import, reference, or mock the following libraries: "
+                f"{modules_str}. Treat any usage of these libraries in the source file "
+                "as an opaque implementation detail; drive behavior only through the repo's "
+                "public helpers (e.g., call run_parser/convert instead of interacting with CLI parsers directly)."
+            )
+
+        supplements.append(
+            "Import helpers directly from the target module (e.g. `from convert import open_note, write_or_append_note, convert, run_parser`) "
+            "and call them by name. Never introduce module aliases such as `convert_module`, and never call helpers via prefix notation like `convert.convert(...)`."
+        )
+        supplements.append(
+            "When simulating CLI behavior, construct inputs via helper functions (run_parser, convert) instead of instantiating or patching argparse components."
+        )
+        supplements.append(
+            "Only mock external I/O boundaries (e.g., builtins.open, Path.iterdir). Do not patch functions or classes defined inside the source file." 
+        )
+        supplements.append(
+            "Prefer real Path(...) objects or well-configured Path mocks (with is_file() and suffix) rather than chaining return_value assignments."
+        )
+
+        supplement_text = "\n\n".join(supplements)
+        if base:
+            return f"{base}\n\n{supplement_text}" if supplements else base
+        return supplement_text

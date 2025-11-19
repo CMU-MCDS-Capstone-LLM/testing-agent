@@ -136,6 +136,12 @@ def parse_args():
         default=False,
         help="Run each test separately. Default: False",
     )
+    parser.add_argument(
+        "--banned-modules",
+        nargs="*",
+        default=None,
+        help="Module names that generated tests must not import or reference.",
+    )
 
     return parser.parse_args()
 

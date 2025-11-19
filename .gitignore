@@ -1,3 +1,5 @@
+venv38/
+full_data-success_only-all/
 *.py[cod]
 __pycache__/
 .pytest_cache/

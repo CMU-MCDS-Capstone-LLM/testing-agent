@@ -33,7 +33,7 @@ To run this demo, follow these steps
     conda create --name <repo-env-name> python=3.7.9
     conda activate <repo-env-name>
     pip install marshmallow==3.8.0
-    pip install pytest pytest-cov coverage
+    pip install pytest pytest-cov pytest-mock coverage
     conda deactivate
     ```
 
