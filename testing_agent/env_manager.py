@@ -310,41 +310,45 @@ def install_env(
                     check=False
                 )
 
-        # Always ensure pytest is available in the helper image (for coverage collection)
-        print(f"Ensuring pytest is installed in {helper_image_name}...")
-        pytest_check = subprocess.run(
-            ["sudo", "docker", "run", "--rm", helper_image_name, "python", "-c", "import pytest"],  # noqa: S603
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if pytest_check.returncode != 0:
-            print("Installing pytest/pytest-cov into helper image...")
-            temp_container_name = f"temp_{repo_id}_pytest"
-            try:
-                _run(
-                    [
-                        "sudo",
-                        "docker",
-                        "run",
-                        "--name",
-                        temp_container_name,
-                        "--user",
-                        "root",
-                        helper_image_name,
-                        "bash",
-                        "-c",
-                        "pip install pytest pytest-cov pytest-mock || python -m pip install pytest pytest-cov pytest-mock",
-                    ]
-                )
-                _run(["sudo", "docker", "commit", temp_container_name, helper_image_name])
-                print("✓ Installed pytest/pytest-cov in helper image")
-            finally:
-                subprocess.run(
-                    ["sudo", "docker", "rm", "-f", temp_container_name],
-                    capture_output=True,
-                    check=False,
-                )
+        # Always ensure project and pytest stack are installed in the helper image
+        print(f"Ensuring project install and pytest deps in {helper_image_name}...")
+        temp_container_name = f"temp_{repo_id}_deps"
+        try:
+            install_cmds = [
+                "set -e",
+                # allow installing into system env inside container (Debian/PEP 668)
+                "export PIP_BREAK_SYSTEM_PACKAGES=1",
+                "python -m pip install --upgrade pip",
+                # Install project (editable) to make imports work
+                "cd /workspace && python -m pip install --break-system-packages -e .",
+                # Ensure pytest stack for coverage
+                "python -m pip install --break-system-packages pytest pytest-cov pytest-mock",
+            ]
+            _run(
+                [
+                    "sudo",
+                    "docker",
+                    "run",
+                    "--name",
+                    temp_container_name,
+                    "--user",
+                    "root",
+                    "-v",
+                    f"{repo_path}:/workspace",
+                    helper_image_name,
+                    "bash",
+                    "-c",
+                    " && ".join(install_cmds),
+                ]
+            )
+            _run(["sudo", "docker", "commit", temp_container_name, helper_image_name])
+            print("✓ Installed project and pytest deps in helper image")
+        finally:
+            subprocess.run(
+                ["sudo", "docker", "rm", "-f", temp_container_name],
+                capture_output=True,
+                check=False,
+            )
     else:
         print(f"Using existing Docker image: {helper_image_name}")
 
