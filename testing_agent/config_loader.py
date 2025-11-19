@@ -101,7 +101,7 @@ class TestingAgentConfig:
         if project_root is None:
             raise FileNotFoundError(
                 "None of the configured project_root_candidates exist: "
-                + ", ".join(project_root_candidates or ["<missing>"])
+                + ", ".join(str(p) for p in project_root_candidates or ["<missing>"])
             )
 
         metadata_folder = Path(raw['metadata_folder'])

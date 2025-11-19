@@ -153,6 +153,7 @@ def guess_module_and_qualpath(symbol: str, repo_root: Path) -> Tuple[str, Option
     Strategy:
     1. Temporarily insert repo_root into sys.path.
     2. Try longest prefix imports, falling back to 'first component' if none succeed.
+    3. Try common package name mappings if direct import fails (e.g., attr -> attrs).
 
     Returns:
         (module, qualpath or None)
@@ -184,14 +185,79 @@ def guess_module_and_qualpath(symbol: str, repo_root: Path) -> Tuple[str, Option
             except ValueError:
                 pass
 
+    # If direct import failed, try common package name mappings
+    # (e.g., "attr" import name but "attrs" package name)
+    common_mappings = {
+        "attr": "attrs",
+        "cv2": "opencv-python",
+        "PIL": "pillow",
+        "yaml": "pyyaml",
+        "sklearn": "scikit-learn",
+        "bs4": "beautifulsoup4",
+    }
+
+    first_part = parts[0]
+    if first_part in common_mappings:
+        mapped_name = common_mappings[first_part]
+        try:
+            spec = importlib.util.find_spec(mapped_name)
+            if spec is not None:
+                qualpath = ".".join(parts[1:]) or None
+                return mapped_name, qualpath
+        except (ImportError, ValueError):
+            pass
+
     module = parts[0]
     qualpath = ".".join(parts[1:]) or None
     return module, qualpath
 
 
+def has_module_level_side_effects(file_path: Path) -> bool:
+    """
+    Check if a Python file has module-level side effects that would cause
+    import-time failures (e.g., instantiating clients, making network calls).
+
+    Returns True if the file contains suspicious patterns at module level.
+    """
+    try:
+        content = file_path.read_text()
+
+        # Check for module-level instantiation of HTTP clients, database connections, etc.
+        suspicious_patterns = [
+            r'^\s*\w+\s*=\s*\w*HttpClient\s*\(',
+            r'^\s*\w+\s*=\s*\w*Client\s*\(',
+            r'^\s*\w+\s*=\s*\w*Database\s*\(',
+            r'^\s*\w+\s*=\s*\w*Connection\s*\(',
+            r'^\s*\w+\s*=\s*requests\.',
+            r'^\s*\w+\s*=\s*mlflow\.',
+        ]
+
+        import re
+        lines = content.split('\n')
+        for i, line in enumerate(lines):
+            # Skip comments and docstrings
+            stripped = line.strip()
+            if stripped.startswith('#') or stripped.startswith('"""') or stripped.startswith("'''"):
+                continue
+
+            # Stop at function/class definitions (module level code ends)
+            if stripped.startswith('def ') or stripped.startswith('class '):
+                break
+
+            # Check for suspicious patterns
+            for pattern in suspicious_patterns:
+                if re.match(pattern, line):
+                    return True
+
+        return False
+    except Exception:
+        return False
+
+
 def format_references(repo_root: Path, refs: Iterable[Dict[str, object]]) -> Dict[str, object]:
     """
     Convert raw reference dictionaries (absolute_path, line, character) into a normalized JSON-friendly format.
+    Filters out test files, temporary/generated files, and files with module-level side effects.
 
     Returns:
         {
@@ -214,14 +280,27 @@ def format_references(repo_root: Path, refs: Iterable[Dict[str, object]]) -> Dic
     for ref in refs:
         abs_path = Path(ref["absolute_path"]).resolve()
         rel_path = abs_path.relative_to(repo_root)
+        rel_path_str = str(rel_path)
 
-        if str(rel_path) not in seen_paths:
-            seen_paths.add(str(rel_path))
-            files.append(str(rel_path))
+        # Skip test files
+        if looks_like_test(rel_path_str):
+            continue
+
+        # Skip temporary/generated files
+        if rel_path.name.startswith("_scratch_"):
+            continue
+
+        # Skip files with module-level side effects (import-time failures)
+        if has_module_level_side_effects(abs_path):
+            continue
+
+        if rel_path_str not in seen_paths:
+            seen_paths.add(rel_path_str)
+            files.append(rel_path_str)
 
         formatted_refs.append(
             {
-                "relative_path": str(rel_path),
+                "relative_path": rel_path_str,
                 "absolute_path": str(abs_path),
                 "line": ref["line"] + 1,        # convert to 1-based
                 "character": ref["character"] + 1,

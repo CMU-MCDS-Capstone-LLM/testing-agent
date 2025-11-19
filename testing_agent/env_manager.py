@@ -77,6 +77,90 @@ def _load_decision_json(decision_path: Path) -> Dict[str, object]:
         return json.load(handle)
 
 
+def _normalize_pip_deps(pip_deps: List[str], repo_path: Path) -> Tuple[List[str], List[str]]:
+    """
+    Normalize pip dependencies, handling -r and -e with relative paths.
+
+    Converts paths like "-r ../requirements.txt" to absolute paths when they
+    reference files outside the repo directory (likely mistakes in decision.json).
+
+    When an exact file is not found, tries to find a similar file in the repo root
+    (useful for handling typos like "kerequirements.txt" -> find "dev-requirements.txt").
+
+    Returns:
+        (normalized_deps, warnings) - list of normalized deps and list of warning messages
+    """
+    normalized = []
+    warnings = []
+
+    for dep in pip_deps:
+        # Handle -r file.txt syntax
+        if dep.startswith("-r "):
+            req_file = dep[3:].strip()  # Remove "-r " and strip whitespace
+            # Resolve path relative to repo_path
+            full_path = (repo_path / req_file).resolve()
+            # If path exists, use absolute path
+            if full_path.exists():
+                normalized.append("-r")
+                normalized.append(str(full_path))
+            else:
+                # Try to find a file with the same extension in repo root
+                basename = Path(req_file).name
+                repo_root_candidate = repo_path / basename
+
+                if repo_root_candidate.exists():
+                    warnings.append(
+                        f"pip_deps uses '{dep}' but '{basename}' exists in repo root. "
+                        f"Using repo root version: {repo_root_candidate}"
+                    )
+                    normalized.append("-r")
+                    normalized.append(str(repo_root_candidate))
+                else:
+                    # Try fuzzy match: find any *requirements*.txt file that's reasonably close
+                    req_files = list(repo_path.glob("*requirements*.txt"))
+                    if req_files:
+                        # Sort by name similarity and pick the first one
+                        chosen = sorted(req_files, key=lambda p: _name_distance(basename, p.name))[0]
+                        warnings.append(
+                            f"pip_deps uses '{dep}' but not found. "
+                            f"Using fuzzy match: {chosen.name}"
+                        )
+                        normalized.append("-r")
+                        normalized.append(str(chosen))
+                    else:
+                        warnings.append(f"pip_deps uses '{dep}' but no matching file found at {full_path}")
+                        # Skip this dep instead of letting pip fail
+                        # (we'll install pytest-cov and pytest-mock at least)
+        # Handle -e . or -e path syntax (editable installs)
+        elif dep.startswith("-e "):
+            path = dep[3:].strip()  # Remove "-e " and strip whitespace
+            if path != ".":
+                full_path = (repo_path / path).resolve()
+                if full_path.exists():
+                    normalized.append("-e")
+                    normalized.append(str(full_path))
+                else:
+                    warnings.append(f"pip_deps uses '{dep}' but path may not exist at {full_path}")
+                    # Skip missing -e paths
+            else:
+                normalized.append("-e")
+                normalized.append(".")
+        else:
+            normalized.append(dep)
+
+    return normalized, warnings
+
+
+def _name_distance(name1: str, name2: str) -> int:
+    """Simple string distance metric for filename matching."""
+    # Convert to lowercase and count matching characters
+    s1, s2 = name1.lower(), name2.lower()
+    # Count characters that appear in both
+    common = sum(1 for c in s1 if c in s2)
+    # Prefer shorter overall distance
+    return abs(len(s1) - len(s2)) + (max(len(s1), len(s2)) - common)
+
+
 def _ensure_directory(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
@@ -213,8 +297,16 @@ def _resolve_python_executable(
         if _python_matches_version(resolved, major, minor):
             return resolved
 
+    # Fallback: use system Python3 if no exact match found
+    # This is lenient to allow for version mismatches in testing environments
+    print(f"[WARN] Could not find Python {version_tag}, falling back to system Python")
+    fallback = _resolve_path("python3")
+    if fallback:
+        return fallback
+
     raise EnvironmentError(
-        f"Unable to locate a python executable matching version tag '{version_tag}'."
+        f"Unable to locate a python executable matching version tag '{version_tag}' "
+        f"and fallback python3 not available."
     )
 
 
@@ -228,18 +320,25 @@ def install_env(
     skip_editable: bool = False,
     skip_editable_on_error: bool = True,
     auto_fix_sqlite: bool = True,
+    env_mode: str = "helper",
+    venv_dir: Optional[Path] = None,
 ) -> EnvMetadata:
     """Create (or reuse) a virtual environment and install repo dependencies."""
 
     decision = _load_decision_json(decision_path)
     variables: Dict[str, object] = decision.get("variables", {}) if isinstance(decision, dict) else {}
+
+    repo_path = repo_path.resolve()
+
     pip_deps: List[str] = list(variables.get("pip_deps", []) or [])
+    # Normalize paths in -r and -e specifications
+    pip_deps, normalize_warnings = _normalize_pip_deps(pip_deps, repo_path)
+    for warning in normalize_warnings:
+        print(f"[WARN] {repo_id}: {warning}")
     pip_deps.extend(["pytest-cov", "pytest-mock"])
     install_editable = bool(variables.get("install_editable", False)) and not skip_editable
     test_cmd: List[str] = list(variables.get("test_cmd", []) or [])
     env_vars: Dict[str, str] = {str(k): str(v) for k, v in (variables.get("env_vars", {}) or {}).items()}
-
-    repo_path = repo_path.resolve()
     helper_venv = (repo_path / ".venv_helper").resolve()
     eval_venv = (repo_path / ".venv_eval").resolve()
 
@@ -253,7 +352,11 @@ def install_env(
         if force_recreate and path.exists():
             shutil.rmtree(path)
         if not path.exists():
+            # Create venv
             _run([python_bin, "-m", "venv", str(path)])
+            # Ensure pip is installed in the venv
+            python_in_venv = _detect_python_bin(path)
+            _run([str(python_in_venv), "-m", "ensurepip", "--upgrade"])
 
     _ensure_venv(helper_venv)
     if env_mode == "helper":
@@ -284,11 +387,16 @@ def install_env(
             auto_fix=True,
         )
 
-    _run(
-        [str(python_path), "-m", "pip", "install", "--upgrade", "pip"],
-        cwd=repo_path,
-        env=command_env,
-    )
+    # Try to upgrade pip, but don't fail if it's not available
+    try:
+        _run(
+            [str(python_path), "-m", "pip", "install", "--upgrade", "pip"],
+            cwd=repo_path,
+            env=command_env,
+        )
+    except Exception as e:
+        print(f"[WARN] {repo_id}: Failed to upgrade pip: {e}")
+        # Continue anyway, pip might still work or be installed
     if pip_deps:
         _run(
             [str(python_path), "-m", "pip", "install", *pip_deps],
