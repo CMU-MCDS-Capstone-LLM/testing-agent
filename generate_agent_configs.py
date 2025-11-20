@@ -29,10 +29,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+
+
+
 def generate_config(
     repo_id: str,
     repo_path: Path,
     repo_yamls_dir: Path,
+    name_map: Dict[str, str],
 ) -> Tuple[str, bool, str]:
     """
     Generate testing-agent config for a single repo using config_builder.py.
@@ -42,24 +46,38 @@ def generate_config(
     """
     logger.info(f"[{repo_id}] Generating config...")
 
-    # Find the repo yaml file
+    # Find the repo yaml file using name_map
     repo_yaml = None
-    for yaml_file in repo_yamls_dir.glob("*.yaml"):
-        if repo_id in yaml_file.stem:
+    if repo_id in name_map:
+        yaml_name = name_map[repo_id]
+        yaml_file = repo_yamls_dir / f"{yaml_name}.yaml"
+        if yaml_file.exists():
             repo_yaml = yaml_file
-            break
+        else:
+            logger.warning(f"[{repo_id}] YAML file not found at {yaml_file}")
+    else:
+        logger.warning(f"[{repo_id}] Not found in name_map.json")
 
     if not repo_yaml:
         logger.warning(f"[{repo_id}] No repo.yaml found, will generate minimal config")
 
+    # Use testing-agent-env python with -m to run as module
+    testing_agent_python = "/home/ubuntu/miniconda3/envs/testing-agent-env/bin/python"
+    python_exe = testing_agent_python if Path(testing_agent_python).exists() else sys.executable
+
     cmd = [
-        sys.executable,
-        str(Path(__file__).parent / "testing_agent" / "config_builder.py"),
+        python_exe,
+        "-m",
+        "testing_agent.config_builder",
         repo_id,
         str(repo_path),
-        str(repo_yaml) if repo_yaml else "",
-        "--mode", "helper",
     ]
+
+    # Add repo_yaml as positional arg if it exists
+    if repo_yaml:
+        cmd.append(str(repo_yaml))
+
+    cmd.extend(["--mode", "helper"])
 
     try:
         result = subprocess.run(
@@ -68,6 +86,7 @@ def generate_config(
             text=True,
             timeout=30,
             check=False,
+            cwd=str(Path(__file__).parent),
         )
 
         if result.returncode == 0:
@@ -90,9 +109,17 @@ def generate_config(
 
 
 def collect_repo_paths(data_root: Path) -> Dict[str, Path]:
-    """Collect all repo paths that have been setup (have env_metadata.json)."""
+    """Collect repo paths that have env_metadata.json (environment setup completed)."""
     repo_paths = {}
     repos_dir = data_root / "repos"
+
+    # Repos to protect (don't regenerate)
+    protected_repos = {
+        "amesar_mlflow-tools__431737a891b13a73ec7bdbc507fad21531f2cbf3",
+        "czheo_syntax_sugar_python__1dbc1d44855acd57f280cca03878681e8dc26b01",
+        "emlid_ntripbrowser__9161c1943a8623892b174c98cdf686a4a0ce8673",
+        "godaddy_tartufo__553dc5fb7ddef597cafda451954fa4cba23acde6",
+    }
 
     if not repos_dir.exists():
         logger.error(f"Repos directory not found: {repos_dir}")
@@ -102,16 +129,22 @@ def collect_repo_paths(data_root: Path) -> Dict[str, Path]:
         if not repo_dir.is_dir():
             continue
 
-        metadata_file = repo_dir / ".testing_agent" / "env_metadata.json"
-        config_file = repo_dir / ".testing_agent" / "testing-agent-config.yaml"
+        repo_name = repo_dir.name
 
-        if metadata_file.exists():
-            if config_file.exists():
-                logger.debug(f"Config already exists for {repo_dir.name}, skipping")
-                continue
-            repo_paths[repo_dir.name] = repo_dir
-        else:
-            logger.debug(f"Repo {repo_dir.name} has no env_metadata.json, skipping")
+        # Skip protected repos
+        if repo_name in protected_repos:
+            logger.debug(f"Skipping protected repo: {repo_name}")
+            continue
+
+        # Skip if config already exists
+        config_file = repo_dir / "testing-agent-config.yaml"
+        if config_file.exists():
+            logger.debug(f"Config already exists for {repo_name}, skipping")
+            continue
+
+        # Add all repos (even if .venv_helper doesn't exist yet)
+        # _default_env_metadata will handle missing venv gracefully
+        repo_paths[repo_name] = repo_dir
 
     return repo_paths
 
@@ -149,6 +182,19 @@ def main():
         logger.warning("Will generate configs without repo yaml files")
         repo_yamls_dir = None
 
+    # Load name_map.json
+    name_map_file = Path(__file__).parent / "name_map.json"
+    name_map = {}
+    if name_map_file.exists():
+        try:
+            with open(name_map_file) as f:
+                name_map = json.load(f)
+            logger.info(f"Loaded {len(name_map)} entries from name_map.json")
+        except Exception as e:
+            logger.warning(f"Failed to load name_map.json: {e}")
+    else:
+        logger.warning(f"name_map.json not found at {name_map_file}")
+
     logger.info(f"Starting config generation for {data_root}")
 
     # Collect repos that need config files
@@ -176,7 +222,7 @@ def main():
 
     for repo_id in sorted(repo_paths.keys()):
         repo_path = repo_paths[repo_id]
-        _, success, message = generate_config(repo_id, repo_path, repo_yamls_dir or Path())
+        _, success, message = generate_config(repo_id, repo_path, repo_yamls_dir or Path(), name_map)
         results[repo_id] = (success, message)
 
         if success:

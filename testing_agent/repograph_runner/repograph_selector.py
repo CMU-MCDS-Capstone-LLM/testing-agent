@@ -186,26 +186,27 @@ def guess_module_and_qualpath(symbol: str, repo_root: Path) -> Tuple[str, Option
                 pass
 
     # If direct import failed, try common package name mappings
-    # (e.g., "attr" import name but "attrs" package name)
+    # The repo.yaml source field may be a package name (e.g., "slackclient", "pyyaml")
+    # but we need the module name for find_refs_by_fqn (e.g., "slack", "yaml")
+    # This maps package_name -> module_name when direct import fails
     common_mappings = {
-        "attr": "attrs",
-        "cv2": "opencv-python",
-        "PIL": "pillow",
-        "yaml": "pyyaml",
-        "sklearn": "scikit-learn",
-        "bs4": "beautifulsoup4",
+        "slackclient": "slack",  # slackclient package, slack module
+        "slack-sdk": "slack_sdk",  # slack-sdk package, slack_sdk module
+        "pyyaml": "yaml",  # pyyaml package, yaml module
+        "beautifulsoup4": "bs4",  # beautifulsoup4 package, bs4 module
+        "opencv-python": "cv2",  # opencv-python package, cv2 module
+        "scikit-learn": "sklearn",  # scikit-learn package, sklearn module
+        "pillow": "PIL",  # pillow package, PIL module
     }
 
     first_part = parts[0]
     if first_part in common_mappings:
+        # Use the mapped module name directly without checking if it's importable,
+        # since this function runs in the testing-agent environment which may not
+        # have the target libraries installed. The target environment will have them.
         mapped_name = common_mappings[first_part]
-        try:
-            spec = importlib.util.find_spec(mapped_name)
-            if spec is not None:
-                qualpath = ".".join(parts[1:]) or None
-                return mapped_name, qualpath
-        except (ImportError, ValueError):
-            pass
+        qualpath = ".".join(parts[1:]) or None
+        return mapped_name, qualpath
 
     module = parts[0]
     qualpath = ".".join(parts[1:]) or None

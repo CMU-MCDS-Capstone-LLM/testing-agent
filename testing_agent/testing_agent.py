@@ -58,9 +58,8 @@ class TestingAgent:
         if repograph_runner is not None:
             self.repograph_runner = repograph_runner
         else:
-            self.repograph_runner = LocalRepoGraphRunner(
-                # LocalRepoGraphRunner shouldn't use the local test executor, since repograph is not installed in repo env.
-                runner=LocalRunner([], {}),
+            # Use direct LSP repograph instead of subprocess wrapper
+            self.repograph_runner = DirectLSPRepoGraphRunner(
                 timeout=self.config.max_run_time,
             )
 
@@ -116,7 +115,7 @@ class TestingAgent:
 
         test_file_path = self.aggregate_test_file
         test_command_dir = self.config.test_command_dir or Path.cwd()
-        python_exe = self.config.repo_venv_python_candidates[0] if self.config.repo_venv_python_candidates else "python"
+        python_exe = str(self.config.repo_venv_python) if self.config.repo_venv_python else "python"
 
         # Run pytest to identify failed and skipped tests
         cmd = [
@@ -278,11 +277,30 @@ class TestingAgent:
 
         temp_path = None
         try:
+            # Convert package names to module names for repograph
+            PACKAGE_TO_MODULE = {
+                "slackclient": "slack",
+                "slack-sdk": "slack_sdk",
+                "pyyaml": "yaml",
+                "beautifulsoup4": "bs4",
+                "opencv-python": "cv2",
+                "scikit-learn": "sklearn",
+                "pillow": "PIL",
+            }
+
+            migration_for_repograph = self.config.migration.copy()
+            source = migration_for_repograph.get("source")
+            if isinstance(source, str) and source in PACKAGE_TO_MODULE:
+                migration_for_repograph["source"] = PACKAGE_TO_MODULE[source]
+            target = migration_for_repograph.get("target")
+            if isinstance(target, str) and target in PACKAGE_TO_MODULE:
+                migration_for_repograph["target"] = PACKAGE_TO_MODULE[target]
+
             with tempfile.NamedTemporaryFile(
                 "w", suffix=".yaml", dir=str(selector_dir), delete=False
             ) as tmp:
                 yaml.safe_dump(
-                    self.config.migration,
+                    migration_for_repograph,
                     tmp,
                     sort_keys=False,
                     allow_unicode=True,
@@ -458,6 +476,12 @@ class TestingAgent:
                 "-m",
                 "pytest",
             ]
+
+            # Set rootdir to repo root to avoid reading parent pyproject.toml
+            pytest_cmd.extend([
+                "--override-ini",
+                f"testpaths={str(self.config.project_root)}"
+            ])
 
             if cov_targets:
                 pytest_cmd.extend(f"--cov={target}" for target in cov_targets)
@@ -945,6 +969,122 @@ class TestingAgent:
         except subprocess.CalledProcessError as exc:
             self.logger.error("Command failed: %s", exc)
             raise
+
+
+class DirectLSPRepoGraphRunner(RepoGraphRunner):
+    """Run RepoGraph directly using lsp_repograph package."""
+
+    def __init__(self, timeout: int = 600) -> None:
+        self.timeout = timeout
+
+    def run(self, request: RepoGraphRequest) -> RepoGraphResult:
+        try:
+            from lsp_repograph.core.multilspy_client import MultilspyLSPClient
+        except ImportError:
+            raise RuntimeError("lsp_repograph package not installed")
+
+        import yaml as yaml_lib
+        from pathlib import Path
+
+        repo_root = request.repo_path.resolve()
+
+        # Load migration config
+        with open(request.migration_config) as f:
+            config = yaml_lib.safe_load(f)
+
+        # Get source from migration section, or top-level for backward compatibility
+        migration = config.get("migration", {})
+        source = migration.get("source") or config.get("source")
+        if not source:
+            raise ValueError("Migration config must define a source")
+
+        # Create client with venv
+        custom_init = {
+            "initializationOptions": {
+                "workspace": {
+                    "environmentPath": str(request.env_python)
+                }
+            }
+        } if request.env_python else None
+
+        client = MultilspyLSPClient(str(repo_root), custom_init_params=custom_init)
+
+        try:
+            # Find references using find_refs_by_fqn (scratch file approach)
+            refs_fqn = client.find_refs_by_fqn(module=source)
+
+            # ALSO search for imports directly in source files using find_refs_by_loc
+            # This ensures we catch all imports that find_refs_by_fqn might miss
+            all_refs = list(refs_fqn)  # Start with find_refs_by_fqn results
+            seen_locs = {(ref["absolute_path"], ref["line"], ref["character"]) for ref in all_refs}
+
+            py_files = list(repo_root.glob("**/*.py"))
+            # Filter out venv directories and test files (we already got those from find_refs_by_fqn)
+            py_files = [f for f in py_files if ".venv" not in str(f) and "__pycache__" not in str(f)]
+
+            for py_file in py_files:
+                try:
+                    content = py_file.read_text(encoding='utf-8', errors='ignore')
+                    lines = content.split('\n')
+
+                    for line_num, line in enumerate(lines):
+                        # Look for import statements
+                        if f"import {source}" in line or f"from {source}" in line:
+                            # Found an import, use find_refs_by_loc to get all references
+                            import_char = line.find(source)
+                            if import_char >= 0:
+                                rel_path = py_file.relative_to(repo_root)
+                                try:
+                                    refs_at_loc = client.find_refs_by_loc(
+                                        path=str(rel_path),
+                                        line=line_num,
+                                        character=import_char + len(source) // 2
+                                    )
+                                    for ref in refs_at_loc:
+                                        key = (ref["absolute_path"], ref["line"], ref["character"])
+                                        if key not in seen_locs:
+                                            seen_locs.add(key)
+                                            all_refs.append(ref)
+                                except Exception:
+                                    # If this specific file fails, continue
+                                    pass
+                except Exception:
+                    # If we can't read this file, skip it
+                    pass
+
+            refs = all_refs
+
+            # Format results
+            files = []
+            seen = set()
+            formatted_refs = []
+
+            for ref in refs:
+                abs_path = Path(ref["absolute_path"]).resolve()
+                try:
+                    rel_path = abs_path.relative_to(repo_root)
+                    rel_str = str(rel_path)
+                    if rel_str not in seen:
+                        seen.add(rel_str)
+                        files.append(rel_str)
+                except ValueError:
+                    pass
+
+                formatted_refs.append({
+                    "relative_path": str(Path(ref["absolute_path"]).relative_to(repo_root)) if Path(ref["absolute_path"]).is_relative_to(repo_root) else ref["absolute_path"],
+                    "absolute_path": ref["absolute_path"],
+                    "line": ref["line"],
+                    "character": ref["character"]
+                })
+
+            return RepoGraphResult(
+                source_module=source,
+                source_qualpath=None,
+                library_consumers={"files": files, "references": formatted_refs},
+                workspace_callers={}
+            )
+        finally:
+            client.shutdown()
 
 
 class LocalRepoGraphRunner(RepoGraphRunner):
