@@ -1022,32 +1022,59 @@ class DirectLSPRepoGraphRunner(RepoGraphRunner):
             # Filter out venv directories and test files (we already got those from find_refs_by_fqn)
             py_files = [f for f in py_files if ".venv" not in str(f) and "__pycache__" not in str(f)]
 
+            # Build list of possible module names to search for
+            # (handles package-name vs module-name differences)
+            PACKAGE_TO_MODULE = {
+                "slackclient": "slack",
+                "slack-sdk": "slack_sdk",
+                "pyyaml": "yaml",
+                "beautifulsoup4": "bs4",
+                "opencv-python": "cv2",
+                "scikit-learn": "sklearn",
+                "pillow": "PIL",
+                "pytorch-transformers": "pytorch_transformers",
+                "pytorch-pretrained-bert": "pytorch_pretrained_bert",
+            }
+
+            possible_names = [source]
+            # Add version with dashes replaced by underscores
+            if "-" in source:
+                possible_names.append(source.replace("-", "_"))
+            # Add mapped module name if it exists
+            if source in PACKAGE_TO_MODULE:
+                possible_names.append(PACKAGE_TO_MODULE[source])
+
+            # Remove duplicates while preserving order
+            possible_names = list(dict.fromkeys(possible_names))
+
             for py_file in py_files:
                 try:
                     content = py_file.read_text(encoding='utf-8', errors='ignore')
                     lines = content.split('\n')
 
                     for line_num, line in enumerate(lines):
-                        # Look for import statements
-                        if f"import {source}" in line or f"from {source}" in line:
-                            # Found an import, use find_refs_by_loc to get all references
-                            import_char = line.find(source)
-                            if import_char >= 0:
-                                rel_path = py_file.relative_to(repo_root)
-                                try:
-                                    refs_at_loc = client.find_refs_by_loc(
-                                        path=str(rel_path),
-                                        line=line_num,
-                                        character=import_char + len(source) // 2
-                                    )
-                                    for ref in refs_at_loc:
-                                        key = (ref["absolute_path"], ref["line"], ref["character"])
-                                        if key not in seen_locs:
-                                            seen_locs.add(key)
-                                            all_refs.append(ref)
-                                except Exception:
-                                    # If this specific file fails, continue
-                                    pass
+                        # Look for import statements with any of the possible names
+                        for search_name in possible_names:
+                            if f"import {search_name}" in line or f"from {search_name}" in line:
+                                # Found an import, use find_refs_by_loc to get all references
+                                import_char = line.find(search_name)
+                                if import_char >= 0:
+                                    rel_path = py_file.relative_to(repo_root)
+                                    try:
+                                        refs_at_loc = client.find_refs_by_loc(
+                                            path=str(rel_path),
+                                            line=line_num,
+                                            character=import_char + len(search_name) // 2
+                                        )
+                                        for ref in refs_at_loc:
+                                            key = (ref["absolute_path"], ref["line"], ref["character"])
+                                            if key not in seen_locs:
+                                                seen_locs.add(key)
+                                                all_refs.append(ref)
+                                    except Exception:
+                                        # If this specific file fails, continue
+                                        pass
+                                break  # Found match with this name, don't try others
                 except Exception:
                     # If we can't read this file, skip it
                     pass
