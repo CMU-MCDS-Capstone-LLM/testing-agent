@@ -629,17 +629,33 @@ class UnitTestGenerator:
         )
 
     def _code_mentions_banned_module(self, code_snippet: str) -> bool:
+        """Check if code contains REAL imports of banned modules.
+
+        Only bans actual import statements like:
+        - from flask import Flask
+        - import flask
+
+        Allows mocking and referencing like:
+        - @patch("module.Flask", MagicMock())
+        - assert hasattr(module, 'Flask')
+        """
         if not code_snippet:
             return False
+
         try:
             tree = ast.parse(code_snippet, type_comments=True)
         except SyntaxError:
-            lowered = code_snippet
-            return any(
-                f"import {module}" in lowered or f"from {module}" in lowered
-                for module in self.banned_modules
-            )
+            # Fallback: use regex to detect ONLY real import statements
+            import re
+            for module in self.banned_modules:
+                # Match: from flask import X or import flask
+                if re.search(rf"\bfrom\s+{re.escape(module)}\s+import", code_snippet):
+                    return True
+                if re.search(rf"\bimport\s+{re.escape(module)}\b", code_snippet):
+                    return True
+            return False
 
+        # Use AST to detect real imports (most reliable method)
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
