@@ -97,6 +97,9 @@ class TestingAgent:
         # Clean up failed and skipped tests to ensure 100% pass rate
         self._cleanup_failing_tests()
 
+        # Print coverage summary table
+        self._print_coverage_summary()
+
         if self.config.html_report_path:
             self.logger.info(
                 "All cover-agent tasks completed. HTML report saved to %s",
@@ -374,6 +377,32 @@ class TestingAgent:
         cov_targets = {target for target in cov_targets if target}
         return cov_targets, include_tokens
 
+    def _clean_malformed_imports(self, content: str) -> str:
+        """Remove common malformed import patterns that LLMs sometimes generate.
+
+        Examples:
+        - `from redis import BertTokenizer` followed by indented continuation
+        - Partial import statements with unexpected indentation
+        """
+        lines = content.split('\n')
+        cleaned_lines = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            # Skip lines that are just indented module names (leftover from malformed imports)
+            if line.strip() and not line.strip().startswith('#') and line[0].isspace():
+                # Check if this looks like a continuation of a malformed import
+                if i > 0 and ('import' in cleaned_lines[-1] if cleaned_lines else False):
+                    stripped = line.strip()
+                    # If it's a bare name (likely from a malformed import), skip it
+                    if stripped.isidentifier() or stripped.endswith(','):
+                        self.logger.debug("Removing malformed import continuation: %s", line)
+                        i += 1
+                        continue
+            cleaned_lines.append(line)
+            i += 1
+        return '\n'.join(cleaned_lines)
+
     def _ensure_module_import_stub(self, test_file: Path, module_name: str) -> None:
         if not self.aggregate_test_file:
             return
@@ -397,6 +426,9 @@ class TestingAgent:
             f"    importlib.import_module(\"{module_name}\")\n"
             "    assert True\n"
         )
+
+        # Clean malformed imports before writing
+        current = self._clean_malformed_imports(current)
 
         self.aggregate_test_file.write_text(current + snippet, encoding="utf-8")
         self.logger.info("Added import stub for %s to %s", module_name, test_file)
@@ -928,6 +960,93 @@ class TestingAgent:
     # ------------------------------------------------------------------
     # Utility helpers
     # ------------------------------------------------------------------
+    def _print_coverage_summary(self) -> None:
+        """Parse coverage.xml and print a summary table to the log."""
+        if not self.config.code_coverage_report_path.exists():
+            return
+
+        try:
+            import xml.etree.ElementTree as ET
+        except ImportError:
+            self.logger.warning("Could not import xml.etree.ElementTree for coverage summary")
+            return
+
+        try:
+            tree = ET.parse(self.config.code_coverage_report_path)
+            root = tree.getroot()
+
+            # Extract overall coverage from root element
+            total_line_rate = root.get("line-rate", "0")
+            lines_covered = root.get("lines-covered", "0")
+            lines_valid = root.get("lines-valid", "0")
+
+            # Collect per-file coverage info from classes
+            file_coverage = []
+            for package in root.findall(".//package"):
+                for cls in package.findall(".//class"):
+                    filename = cls.get("filename", "unknown")
+                    line_rate = float(cls.get("line-rate", "0"))
+                    coverage_pct = round(line_rate * 100, 1)
+
+                    # Count lines for this file
+                    lines = cls.findall(".//line")
+                    covered = len([l for l in lines if l.get("hits", "0") != "0"])
+                    total = len(lines)
+
+                    file_coverage.append({
+                        "name": filename,
+                        "stmts": total,
+                        "miss": total - covered,
+                        "cover": coverage_pct,
+                    })
+
+            if file_coverage:
+                # Sort by filename
+                file_coverage.sort(key=lambda x: x["name"])
+
+                # Print header
+                self.logger.info("=" * 70)
+                self.logger.info("COVERAGE SUMMARY")
+                self.logger.info("=" * 70)
+                self.logger.info(
+                    "%-50s %6s %6s %8s",
+                    "Name",
+                    "Stmts",
+                    "Miss",
+                    "Cover"
+                )
+                self.logger.info("-" * 70)
+
+                # Print each file
+                for fc in file_coverage:
+                    self.logger.info(
+                        "%-50s %6d %6d %7.1f%%",
+                        fc["name"],
+                        fc["stmts"],
+                        fc["miss"],
+                        fc["cover"]
+                    )
+
+                self.logger.info("-" * 70)
+
+                # Print total
+                try:
+                    total_rate = float(total_line_rate) * 100
+                    self.logger.info(
+                        "%-50s %6s %6s %7.1f%%",
+                        "TOTAL",
+                        lines_valid,
+                        int(lines_valid) - int(lines_covered),
+                        total_rate
+                    )
+                except (ValueError, TypeError):
+                    pass
+
+                self.logger.info("=" * 70)
+
+        except Exception as e:
+            self.logger.debug(f"Failed to print coverage summary: {e}")
+
     def _prepare_html_report(self) -> None:
         if not self.config.html_report_path:
             return
@@ -945,6 +1064,21 @@ class TestingAgent:
             "p = str(_pkg_root)\n"
             "if p not in sys.path:\n"
             "    sys.path.insert(0, p)\n"
+            "\n"
+            "# [AUTO] Workaround for PyO3 cryptography module initialization issue\n"
+            "# Some cryptography versions use Rust/PyO3 modules that can only be initialized once per process\n"
+            "# This causes 'PyO3 modules compiled for CPython 3.8 or older may only be initialized once' errors\n"
+            "# Solution: eagerly import the module that uses cryptography to initialize it early\n"
+            "try:\n"
+            "    # Try to import common modules that might use cryptography\n"
+            "    import aiortc\n"
+            "except (ImportError, Exception):\n"
+            "    pass\n"
+            "\n"
+            "try:\n"
+            "    import cryptography\n"
+            "except (ImportError, Exception):\n"
+            "    pass\n"
         )
         conftest_path.write_text(content, encoding="utf-8")
         self.logger.info("Created %s", conftest_path)
@@ -985,6 +1119,7 @@ class DirectLSPRepoGraphRunner(RepoGraphRunner):
 
         import yaml as yaml_lib
         from pathlib import Path
+        import re
 
         repo_root = request.repo_path.resolve()
 
@@ -1013,6 +1148,12 @@ class DirectLSPRepoGraphRunner(RepoGraphRunner):
             # Find references using find_refs_by_fqn (scratch file approach)
             refs_fqn = client.find_refs_by_fqn(module=source)
 
+            # Filter out venv and cache directories from LSP results
+            refs_fqn = [
+                ref for ref in refs_fqn
+                if not any(part in str(ref.get("absolute_path", "")) for part in [".venv", "__pycache__"])
+            ]
+
             # ALSO search for imports directly in source files using find_refs_by_loc
             # This ensures we catch all imports that find_refs_by_fqn might miss
             all_refs = list(refs_fqn)  # Start with find_refs_by_fqn results
@@ -1034,6 +1175,10 @@ class DirectLSPRepoGraphRunner(RepoGraphRunner):
                 "pillow": "PIL",
                 "pytorch-transformers": "pytorch_transformers",
                 "pytorch-pretrained-bert": "pytorch_pretrained_bert",
+                "pycryptodome": "Crypto",
+                "pyopenssl": "OpenSSL",
+                "django-rest-swagger": "rest_framework_swagger",
+                "ruamel.yaml": "ruamel",
             }
 
             possible_names = [source]
@@ -1053,9 +1198,17 @@ class DirectLSPRepoGraphRunner(RepoGraphRunner):
                     lines = content.split('\n')
 
                     for line_num, line in enumerate(lines):
+                        # Skip comment lines
+                        if line.lstrip().startswith('#'):
+                            continue
+
                         # Look for import statements with any of the possible names
                         for search_name in possible_names:
-                            if f"import {search_name}" in line or f"from {search_name}" in line:
+                            # Use word boundaries to match the module name in import statements
+                            # This handles comma-separated imports like: import abc, jsonpath_rw, re
+                            # Pattern matches: import X, from X, etc. with word boundaries
+                            import_pattern = rf'\b(?:import|from)\b.*\b{re.escape(search_name)}\b'
+                            if re.search(import_pattern, line):
                                 # Found an import, use find_refs_by_loc to get all references
                                 import_char = line.find(search_name)
                                 if import_char >= 0:

@@ -21,7 +21,29 @@ DEFAULT_TEST_DIR = "."
 DEFAULT_AGG_TEST_FILE = "tests/test_additional.py"
 DEFAULT_API_BASE = "https://ai-gateway.andrew.cmu.edu/"
 DEFAULT_ADDITIONAL_INSTRUCTIONS = """CRITICAL SYNTAX REQUIREMENT:
-If the generated test file uses any `from __future__ import` statements, THEY MUST BE THE FIRST LINES IN THE FILE (before all other imports, including comments). Pytest will reject files where `from __future__` imports appear after other code or imports.\n\nWhen generating Helper Tests, you must treat the underlying libraries (Library A and Library B) as invisible. Helper Tests should never import, reference, or depend on those libraries directly.\n\nHelper Tests must be:\n- High-level and behavior-based.\n- Written only against the repo's public abstractions (functions/classes exposed by the project).\n- Stable across the migration (the same assertions must hold both before and after replacing the library).\n\nHelper Tests may not:\n- Import Library A or Library B.\n- Assert library-specific error messages.\n- Depend on parsing formats or behaviors unique to a specific library implementation.\n\nInstead, target library-independent invariants such as:\n- Default values and argument validation.\n- Type conversions and data structure shape.\n- Stable flags/fields and behavior defined by the project itself.\n- Presence/absence of required arguments or lifecycle hooks.\n\nYour tests must pass on both the original implementation (using Library A) and the migrated implementation (using Library B).\n\nMock external dependencies only; do not patch functions/classes defined in the source file under test. Let the real implementation run whenever possible. Patch file/network/DB I/O only when required, and patch each target at most once per test.\n\nWhen you need path-like objects, prefer real Path(...) instances. If you must mock path.joinpath(), assign a Mock to the return value and configure is_file() and suffix instead of chaining return_value assignments.\n\nImport helpers from the source module directly (e.g., `from convert import convert_file`) and call them by name. Avoid dotted calls like convert.convert(...). If the production code filters resources (Path.iterdir, os.listdir, etc.), configure mocks so the predicates remain true—return objects where is_file() is True and suffix equals '.json'. Whenever you mock domain objects, set every attribute or method that the production code touches, or build real instances via project utilities.\n\nIMPORTANT - Handling Asynchronous Code:\nIf any function under test is asynchronous (uses `async def`), follow these rules:\n1. Use `@pytest.mark.asyncio` decorator on your test function\n2. Use `async def` for your test function (make it asynchronous)\n3. Use `await` when calling async functions\n4. Use `unittest.mock.AsyncMock` instead of `Mock` for async functions\n5. When mocking async functions, use: `mock_obj = AsyncMock(return_value=expected_value)`\n6. Never use regular `Mock` objects for async code - they cannot be awaited\n\nExample of correct async test:\n```python\nfrom __future__ import annotations\nimport pytest\nfrom unittest.mock import AsyncMock\n\n@pytest.mark.asyncio\nasync def test_async_function():\n    mock_service = AsyncMock()\n    mock_service.fetch_data = AsyncMock(return_value={'key': 'value'})\n    result = await my_async_function(mock_service)\n    assert result is not None\n```\n\nCRITICAL - External Service Handling:\nFor services requiring HTTP servers, databases, message queues, or other external infrastructure that cannot be reliably mocked or are not critical to unit testing:\n1. Wrap imports of such services in try/except blocks and skip the test if the import fails.\n2. Alternatively, completely skip tests that require running unavailable external services.\n3. Example: If a function requires a live HTTP server, either mock the HTTP client/requests library, or skip the test.\n4. Never let tests hang or fail due to missing external services; always provide graceful skip mechanisms using pytest.skip().\n\nFocus on uncovered lines in the latest coverage report and skip tests that only hit lines with existing coverage. Generate normal (happy-path) scenarios first, but include at least one exception-path test when those lines remain uncovered. Every proposed test must add new line or branch coverage; skip any test that duplicates prior behavior.\n\nWhen a module depends on mlflow or other external services, mock mlflow clients and helper utilities (e.g., `mlflow_tools.common.mlflow_utils.get_mlflow_host_token`, `mlflow_tools.export_import.utils.create_client`) so tests never require real credentials or network access. Assert that key client methods are invoked with expected arguments.\n\nAlways identify the specific module and function under test from the repograph output. For each target file, provide at least one success-path test and one failure-path test that prove the project's own behavior (copy/import/export, CLI commands, etc.).\n\nAvoid trivial "import" tests; each test should verify state changes, outputs, or error handling in the target module.\n"""
+If the generated test file uses any `from __future__ import` statements, THEY MUST BE THE FIRST LINES IN THE FILE (before all other imports, including comments). Pytest will reject files where `from __future__` imports appear after other code or imports.
+
+CRITICAL IMPORT REQUIREMENT:
+When you generate test code, ALL imports must be syntactically correct and match valid Python import statements. NEVER generate malformed imports like:
+- `from redis import BertTokenizer` (incorrect - BertTokenizer comes from pytorch_transformers, not redis)
+- Partial import statements with unexpected indentation
+- Incomplete from...import statements that span multiple lines incorrectly
+- Multi-line imports with empty parentheses: `from module import ( )` or `from module import (\n)`
+
+IMPORT FORMAT REQUIREMENT:
+- Use ONLY single-line import statements: `from module import A, B, C`
+- Do NOT use multi-line import syntax with parentheses
+- Always ensure imports are complete with actual module names inside the import statement
+- Every import statement must be on a single line with all required module names listed\n\nWhen generating Helper Tests, you must treat the underlying libraries (Library A and Library B) as invisible. Helper Tests should never import, reference, or depend on those libraries directly.
+
+CRITICAL - Never Test Libraries Directly:
+- Do NOT import Library A or Library B directly in test code.
+- Do NOT create or instantiate objects from Library A or B in tests.
+- Do NOT write tests that depend on library-specific classes, methods, or behaviors.
+- INSTEAD, test the project's own PUBLIC FUNCTIONS and CLASSES that internally USE Library A or B.
+- Example: If Library A/B is used internally by function `my_function()`, test `my_function()` not the library directly.
+
+Helper Tests must be:\n- High-level and behavior-based.\n- Written only against the repo's public abstractions (functions/classes exposed by the project).\n- Stable across the migration (the same assertions must hold both before and after replacing the library).\n\nHelper Tests may not:\n- Import Library A or Library B.\n- Assert library-specific error messages.\n- Depend on parsing formats or behaviors unique to a specific library implementation.\n\nInstead, target library-independent invariants such as:\n- Default values and argument validation.\n- Type conversions and data structure shape.\n- Stable flags/fields and behavior defined by the project itself.\n- Presence/absence of required arguments or lifecycle hooks.\n\nYour tests must pass on both the original implementation (using Library A) and the migrated implementation (using Library B).\n\nMock external dependencies only; do not patch functions/classes defined in the source file under test. Let the real implementation run whenever possible. Patch file/network/DB I/O only when required, and patch each target at most once per test.\n\nWhen you need path-like objects, prefer real Path(...) instances. If you must mock path.joinpath(), assign a Mock to the return value and configure is_file() and suffix instead of chaining return_value assignments.\n\nImport helpers from the source module directly (e.g., `from convert import convert_file`) and call them by name. Avoid dotted calls like convert.convert(...). If the production code filters resources (Path.iterdir, os.listdir, etc.), configure mocks so the predicates remain true—return objects where is_file() is True and suffix equals '.json'. Whenever you mock domain objects, set every attribute or method that the production code touches, or build real instances via project utilities.\n\nIMPORTANT - Handling Asynchronous Code:\nIf any function under test is asynchronous (uses `async def`), follow these rules:\n1. Use `@pytest.mark.asyncio` decorator on your test function\n2. Use `async def` for your test function (make it asynchronous)\n3. Use `await` when calling async functions\n4. Use `unittest.mock.AsyncMock` instead of `Mock` for async functions\n5. When mocking async functions, use: `mock_obj = AsyncMock(return_value=expected_value)`\n6. Never use regular `Mock` objects for async code - they cannot be awaited\n\nExample of correct async test:\n```python\nfrom __future__ import annotations\nimport pytest\nfrom unittest.mock import AsyncMock\n\n@pytest.mark.asyncio\nasync def test_async_function():\n    mock_service = AsyncMock()\n    mock_service.fetch_data = AsyncMock(return_value={'key': 'value'})\n    result = await my_async_function(mock_service)\n    assert result is not None\n```\n\nCRITICAL - External Service Handling:\nFor services requiring HTTP servers, databases, message queues, or other external infrastructure that cannot be reliably mocked or are not critical to unit testing:\n1. Wrap imports of such services in try/except blocks and skip the test if the import fails.\n2. Alternatively, completely skip tests that require running unavailable external services.\n3. Example: If a function requires a live HTTP server, either mock the HTTP client/requests library, or skip the test.\n4. Never let tests hang or fail due to missing external services; always provide graceful skip mechanisms using pytest.skip().\n\nFocus on uncovered lines in the latest coverage report and skip tests that only hit lines with existing coverage. Generate normal (happy-path) scenarios first, but include at least one exception-path test when those lines remain uncovered. Every proposed test must add new line or branch coverage; skip any test that duplicates prior behavior.\n\nWhen a module depends on mlflow or other external services, mock mlflow clients and helper utilities (e.g., `mlflow_tools.common.mlflow_utils.get_mlflow_host_token`, `mlflow_tools.export_import.utils.create_client`) so tests never require real credentials or network access. Assert that key client methods are invoked with expected arguments.\n\nAlways identify the specific module and function under test from the repograph output. For each target file, provide at least one success-path test and one failure-path test that prove the project's own behavior (copy/import/export, CLI commands, etc.).\n\nAvoid trivial "import" tests; each test should verify state changes, outputs, or error handling in the target module.\n"""
 
 
 def _load_yaml(path: Optional[Path]) -> Dict[str, Any]:
@@ -52,6 +74,10 @@ def _load_migration(repo_yaml: Optional[Path]) -> Dict[str, Any]:
         "opencv-python": "cv2",
         "scikit-learn": "sklearn",
         "pillow": "PIL",
+        "pycryptodome": "Crypto",
+        "pyopenssl": "OpenSSL",
+        "django-rest-swagger": "rest_framework_swagger",
+        "ruamel.yaml": "ruamel",
     }
 
     source = raw.get("source")
@@ -77,6 +103,54 @@ def _metadata_dir(repo_path: Path) -> Path:
     meta = repo_path / ".testing_agent"
     meta.mkdir(parents=True, exist_ok=True)
     return meta.resolve()
+
+
+def _extract_test_dir_from_decision(decision_json: Dict[str, Any]) -> Optional[str]:
+    """Extract test directory from decision.json's tests_exist field.
+
+    Returns the detected test directory (e.g., 'src/tests' or 'tests').
+    """
+    tests_exist = decision_json.get("evidence", {}).get("tests_exist", [])
+    if not tests_exist:
+        return None
+
+    # Extract directory from first test file path
+    # Example: "src/tests/test_api.py contains pytest unit tests"
+    first_test = tests_exist[0] if tests_exist else None
+    if not first_test:
+        return None
+
+    # Extract the path before the test filename
+    test_file = first_test.split()[0]  # Get "src/tests/test_api.py"
+    test_dir = str(Path(test_file).parent)  # Get "src/tests"
+    return test_dir
+
+
+def _detect_test_directory(repo_path: Path, decision_json: Optional[Dict[str, Any]] = None) -> str:
+    """Auto-detect the test directory based on decision.json or repo structure.
+
+    Priority:
+    1. If decision.json provided, extract from tests_exist field
+    2. If src/tests/ exists, use it
+    3. If tests/ exists, use it
+    4. Default to tests/
+    """
+    # Try to get from decision.json first
+    if decision_json:
+        detected = _extract_test_dir_from_decision(decision_json)
+        if detected:
+            return f"{detected}/test_additional.py"
+
+    src_tests = repo_path / "src" / "tests"
+    if src_tests.exists() and src_tests.is_dir():
+        return "src/tests/test_additional.py"
+
+    tests = repo_path / "tests"
+    if tests.exists() and tests.is_dir():
+        return "tests/test_additional.py"
+
+    # Default fallback
+    return DEFAULT_AGG_TEST_FILE
 
 
 def _default_env_metadata(repo_path: Path) -> EnvMetadata:
@@ -140,7 +214,27 @@ def build_config(
     config["metadata_folder"] = str(metadata_dir)
     config["code_coverage_report_path"] = str(metadata_dir / "coverage.xml")
     config["selector_output_path"] = str(metadata_dir / "repograph_result.json")
-    config["aggregate_test_file"] = config.get("aggregate_test_file", DEFAULT_AGG_TEST_FILE)
+
+    # Auto-detect test directory if not explicitly configured
+    if "aggregate_test_file" not in config:
+        # Try to load decision.json to get test directory info
+        decision_json = None
+        # Try multiple possible locations for decision.json
+        possible_decision_paths = [
+            repo_path.parent.parent / "envs" / repo_id / "decision.json",  # Relative to repo
+            Path("/home/ubuntu/testing-agent/full_data-success_only-all/envs") / repo_id / "decision.json",  # Hardcoded
+        ]
+        for decision_path in possible_decision_paths:
+            if decision_path.exists():
+                try:
+                    with decision_path.open("r", encoding="utf-8") as f:
+                        decision_json = json.load(f)
+                    break
+                except Exception:
+                    pass
+        config["aggregate_test_file"] = _detect_test_directory(repo_path, decision_json)
+    else:
+        config["aggregate_test_file"] = config.get("aggregate_test_file")
     # Use pytest without coverage flags; testing_agent will add --cov flags
     # This avoids duplication and compatibility issues with different pytest versions
     config["test_command"] = config.get("test_command", "pytest")

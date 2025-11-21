@@ -477,6 +477,10 @@ class UnitTestValidator:
                     + original_content_lines[updated_test_insertion_point:]
                 )
                 processed_test = "\n".join(processed_test_lines)
+
+                # Clean up malformed imports before writing to file
+                processed_test = self._clean_malformed_imports(processed_test)
+
                 with open(self.test_file_path, "w") as test_file:
                     test_file.write(processed_test)
                     test_file.flush()
@@ -826,3 +830,35 @@ class UnitTestValidator:
                 return f.read()
         except Exception as e:
             return f"Error reading {file_path}: {e}"
+
+    def _clean_malformed_imports(self, content: str) -> str:
+        """Remove malformed import patterns that LLMs sometimes generate.
+
+        Examples:
+        - `from module import (` with empty closing bracket
+        - Incomplete import statements with trailing commas
+        """
+        import re
+        lines = content.split('\n')
+        cleaned_lines = []
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            # Check for empty import brackets: from X import (  )
+            if re.search(r'\bfrom\s+\w+[\w.]* import \(\s*\)', line):
+                self.logger.debug(f"Removing empty import statement: {line}")
+                i += 1
+                continue
+            # Check for incomplete multi-line imports with empty content
+            if line.strip() == ')' and i > 0:
+                prev_line = lines[i - 1].strip() if cleaned_lines else ""
+                if 'import' in prev_line and prev_line.endswith('('):
+                    self.logger.debug("Removing empty import closing bracket")
+                    # Remove the previous import opening line too
+                    if cleaned_lines:
+                        cleaned_lines.pop()
+                    i += 1
+                    continue
+            cleaned_lines.append(line)
+            i += 1
+        return '\n'.join(cleaned_lines)
