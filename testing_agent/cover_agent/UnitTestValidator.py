@@ -481,6 +481,29 @@ class UnitTestValidator:
                 # Clean up malformed imports before writing to file
                 processed_test = self._clean_malformed_imports(processed_test)
 
+                # FINAL SYNTAX CHECK BEFORE WRITING TO FILE
+                try:
+                    import ast
+                    ast.parse(processed_test)
+                except SyntaxError as e:
+                    self.logger.error(
+                        "Syntax error in FINAL generated test, skipping write: %s",
+                        str(e),
+                    )
+
+                    # Return FAIL but DO NOT write broken file
+                    return {
+                        "status": "FAIL",
+                        "reason": f"Final test code has syntax error: {e}",
+                        "exit_code": 1,
+                        "stderr": str(e),
+                        "stdout": "",
+                        "test": generated_test,
+                        "test_code": processed_test,
+                        "language": "python",
+                        "imports": additional_imports,
+                    }
+
                 with open(self.test_file_path, "w") as test_file:
                     test_file.write(processed_test)
                     test_file.flush()
@@ -835,8 +858,8 @@ class UnitTestValidator:
         """Remove malformed import patterns that LLMs sometimes generate.
 
         Examples:
-        - `from module import (` with empty closing bracket
-        - Incomplete import statements with trailing commas
+        - `from module import (` with empty closing bracket on next line
+        - `from module import (  )` on a single line with empty brackets
         """
         import re
         lines = content.split('\n')
@@ -844,21 +867,22 @@ class UnitTestValidator:
         i = 0
         while i < len(lines):
             line = lines[i]
-            # Check for empty import brackets: from X import (  )
-            if re.search(r'\bfrom\s+\w+[\w.]* import \(\s*\)', line):
+
+            # Check for single-line empty import: from X import (  )
+            if re.search(r'\bfrom\s+[\w.]+\s+import\s*\(\s*\)', line):
                 self.logger.debug(f"Removing empty import statement: {line}")
                 i += 1
                 continue
-            # Check for incomplete multi-line imports with empty content
-            if line.strip() == ')' and i > 0:
-                prev_line = lines[i - 1].strip() if cleaned_lines else ""
-                if 'import' in prev_line and prev_line.endswith('('):
-                    self.logger.debug("Removing empty import closing bracket")
-                    # Remove the previous import opening line too
-                    if cleaned_lines:
-                        cleaned_lines.pop()
-                    i += 1
+
+            # Check for multi-line import opening: from X import (
+            # followed by just ) on the next line
+            if re.search(r'\bfrom\s+[\w.]+.*\bimport\s*\(\s*$', line):
+                # Look ahead to see if next line is just ')'
+                if i + 1 < len(lines) and lines[i + 1].strip() == ')':
+                    self.logger.debug(f"Removing empty multi-line import: {line} and {lines[i + 1]}")
+                    i += 2  # Skip both lines
                     continue
+
             cleaned_lines.append(line)
             i += 1
         return '\n'.join(cleaned_lines)
