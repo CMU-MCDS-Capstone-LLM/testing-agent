@@ -312,13 +312,57 @@ def format_references(repo_root: Path, refs: Iterable[Dict[str, object]]) -> Dic
 
 
 def looks_like_test(path: str) -> bool:
+    """
+    Detect if a path looks like a test file.
+
+    Filters out:
+    - Any file in a 'tests/', 'test/', or 'testing/' directory
+    - Files matching common test naming patterns:
+      * test_*.py (pytest convention)
+      * *_test.py (pytest convention)
+      * test*.py (other test files like test.py, tests.py)
+      * *_spec.py (RSpec-like convention)
+      * spec_*.py (RSpec-like convention)
+    - pytest config files (conftest.py)
+    - Aggregated test files (test_additional.py)
+    """
     lower = path.lower()
     name = lower.split("/")[-1]
-    return (
-        "tests" in lower
-        or name.startswith("test_")
-        or name.endswith("_test.py")
-    )
+
+    # Check for test directories first
+    path_parts = lower.split("/")
+    for part in path_parts:
+        if part in ("tests", "test", "testing"):
+            return True
+
+    # Must be a .py file
+    if not name.endswith(".py"):
+        return False
+
+    # Check for test file patterns
+    base_name = name[:-3]  # Remove .py extension
+
+    # pytest patterns: test_*.py, *_test.py
+    if name.startswith("test_"):
+        return True
+    if name.endswith("_test.py"):
+        return True
+
+    # Generic test files: test.py, tests.py, testfile.py, etc.
+    if base_name == "test" or base_name == "tests" or base_name.startswith("test"):
+        return True
+
+    # RSpec-like patterns: *_spec.py, spec_*.py
+    if name.endswith("_spec.py"):
+        return True
+    if name.startswith("spec_"):
+        return True
+
+    # pytest config
+    if name == "conftest.py":
+        return True
+
+    return False
 
 
 def load_migration_config(path: Path) -> Dict[str, object]:

@@ -860,13 +860,18 @@ class UnitTestValidator:
         Examples:
         - `from module import (` with empty closing bracket on next line
         - `from module import (  )` on a single line with empty brackets
+        - Orphaned identifiers that aren't part of any import/from statement
+        - Broken import statements where the from/import is interrupted
         """
         import re
         lines = content.split('\n')
         cleaned_lines = []
         i = 0
+        skip_until_next_import = False
+
         while i < len(lines):
             line = lines[i]
+            stripped = line.strip()
 
             # Check for single-line empty import: from X import (  )
             if re.search(r'\bfrom\s+[\w.]+\s+import\s*\(\s*\)', line):
@@ -882,7 +887,73 @@ class UnitTestValidator:
                     self.logger.debug(f"Removing empty multi-line import: {line} and {lines[i + 1]}")
                     i += 2  # Skip both lines
                     continue
+                else:
+                    # Multi-line import opening without closing ) on next line
+                    # This is likely malformed - mark to skip until next real import/from
+                    self.logger.debug(f"Removing malformed multi-line import start: {line}")
+                    skip_until_next_import = True
+                    i += 1
+                    continue
+
+            # Check for broken/commented import followed by orphaned identifiers
+            if re.match(r'^\s*#\s*from\s+[\w.]+.*\bimport\s*\(', stripped):
+                # Commented-out import opening - skip following identifier lines
+                self.logger.debug(f"Removing commented malformed import: {line}")
+                skip_until_next_import = True
+                i += 1
+                continue
+
+            # If we're in skip mode, skip orphaned identifier lines until we see a real statement
+            if skip_until_next_import:
+                # Skip empty lines and orphaned identifiers
+                if not stripped or re.match(r'^[A-Za-z_]\w*\s*,?\s*$', stripped):
+                    self.logger.debug(f"Removing orphaned identifier (skip mode): {line}")
+                    i += 1
+                    continue
+                else:
+                    # Hit a real statement, exit skip mode
+                    skip_until_next_import = False
+
+            # Check for broken import: from typing import ( followed by from statement
+            if re.search(r'\bfrom\s+[\w.]+.*\bimport\s*\(\s*$', line):
+                # Check if next line starts with another from/import statement (broken)
+                if i + 1 < len(lines) and re.match(r'\s*(from|import)\s+', lines[i + 1]):
+                    self.logger.debug(f"Removing broken incomplete import: {line}")
+                    i += 1
+                    continue
+
+            # Skip orphaned identifier lists (lines with only names, no Python keywords)
+            # These typically appear when LLM tries to list imports but fails the syntax
+            if stripped and not any(keyword in line for keyword in [
+                'def ', 'class ', 'import', 'from', 'if', 'else', 'for', 'while',
+                'try', 'except', 'with', 'return', 'assert', 'raise', '=', ':', '#', '"', "'"
+            ]):
+                # Check if it looks like a standalone identifier list (e.g., "Callable,\nDict,\nList,")
+                # These are typically comma-separated or on separate lines
+                if re.match(r'^[A-Za-z_]\w*\s*,?\s*$', stripped):
+                    # Check context: is this surrounded by other orphan identifiers or comments?
+                    is_orphan = False
+                    # Look back
+                    if cleaned_lines:
+                        last_cleaned = cleaned_lines[-1].strip()
+                        if (re.match(r'^[A-Za-z_]\w*\s*,?\s*$', last_cleaned) or
+                            last_cleaned == '' or
+                            last_cleaned.startswith('#')):
+                            is_orphan = True
+                    # Look ahead
+                    if i + 1 < len(lines):
+                        next_line = lines[i + 1].strip()
+                        if (re.match(r'^[A-Za-z_]\w*\s*,?\s*$', next_line) or
+                            next_line == '' or
+                            next_line.startswith('#')):
+                            is_orphan = True
+
+                    if is_orphan:
+                        self.logger.debug(f"Removing orphaned identifier: {line}")
+                        i += 1
+                        continue
 
             cleaned_lines.append(line)
             i += 1
+
         return '\n'.join(cleaned_lines)

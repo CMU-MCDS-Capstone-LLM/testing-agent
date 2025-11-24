@@ -34,7 +34,9 @@ IMPORT FORMAT REQUIREMENT:
 - Use ONLY single-line import statements: `from module import A, B, C`
 - Do NOT use multi-line import syntax with parentheses
 - Always ensure imports are complete with actual module names inside the import statement
-- Every import statement must be on a single line with all required module names listed\n\nWhen generating Helper Tests, you must treat the underlying libraries (Library A and Library B) as invisible. Helper Tests should never import, reference, or depend on those libraries directly.
+- Every import statement must be on a single line with all required module names listed
+
+When generating Helper Tests, you must treat the underlying libraries (Library A and Library B) as invisible. Helper Tests should never import, reference, or depend on those libraries directly.
 
 CRITICAL - Framework-Neutral Test Generation (for Library Migrations):
 When the target file depends on a framework (Flask, FastAPI, Django, argparse, click, requests, etc.),
@@ -66,7 +68,67 @@ def test_app_structure():
 
 This ensures tests pass both with source library and target library.
 
-Helper Tests must be:\n- High-level and behavior-based.\n- Written only against the repo's public abstractions (functions/classes exposed by the project).\n- Stable across the migration (the same assertions must hold both before and after replacing the library).\n\nHelper Tests may not:\n- Import Library A or Library B.\n- Assert library-specific error messages.\n- Depend on parsing formats or behaviors unique to a specific library implementation.\n\nInstead, target library-independent invariants such as:\n- Default values and argument validation.\n- Type conversions and data structure shape.\n- Stable flags/fields and behavior defined by the project itself.\n- Presence/absence of required arguments or lifecycle hooks.\n\nYour tests must pass on both the original implementation (using Library A) and the migrated implementation (using Library B).\n\nMock external dependencies only; do not patch functions/classes defined in the source file under test. Let the real implementation run whenever possible. Patch file/network/DB I/O only when required, and patch each target at most once per test.\n\nWhen you need path-like objects, prefer real Path(...) instances. If you must mock path.joinpath(), assign a Mock to the return value and configure is_file() and suffix instead of chaining return_value assignments.\n\nImport helpers from the source module directly (e.g., `from convert import convert_file`) and call them by name. Avoid dotted calls like convert.convert(...). If the production code filters resources (Path.iterdir, os.listdir, etc.), configure mocks so the predicates remain true—return objects where is_file() is True and suffix equals '.json'. Whenever you mock domain objects, set every attribute or method that the production code touches, or build real instances via project utilities.\n\nIMPORTANT - Handling Asynchronous Code:\nIf any function under test is asynchronous (uses `async def`), follow these rules:\n1. Use `@pytest.mark.asyncio` decorator on your test function\n2. Use `async def` for your test function (make it asynchronous)\n3. Use `await` when calling async functions\n4. Use `unittest.mock.AsyncMock` instead of `Mock` for async functions\n5. When mocking async functions, use: `mock_obj = AsyncMock(return_value=expected_value)`\n6. Never use regular `Mock` objects for async code - they cannot be awaited\n\nExample of correct async test:\n```python\nfrom __future__ import annotations\nimport pytest\nfrom unittest.mock import AsyncMock\n\n@pytest.mark.asyncio\nasync def test_async_function():\n    mock_service = AsyncMock()\n    mock_service.fetch_data = AsyncMock(return_value={'key': 'value'})\n    result = await my_async_function(mock_service)\n    assert result is not None\n```\n\nCRITICAL - External Service Handling:\nFor services requiring HTTP servers, databases, message queues, or other external infrastructure that cannot be reliably mocked or are not critical to unit testing:\n1. Wrap imports of such services in try/except blocks and skip the test if the import fails.\n2. Alternatively, completely skip tests that require running unavailable external services.\n3. Example: If a function requires a live HTTP server, either mock the HTTP client/requests library, or skip the test.\n4. Never let tests hang or fail due to missing external services; always provide graceful skip mechanisms using pytest.skip().\n\nFocus on uncovered lines in the latest coverage report and skip tests that only hit lines with existing coverage. Generate normal (happy-path) scenarios first, but include at least one exception-path test when those lines remain uncovered. Every proposed test must add new line or branch coverage; skip any test that duplicates prior behavior.\n\nWhen a module depends on mlflow or other external services, mock mlflow clients and helper utilities (e.g., `mlflow_tools.common.mlflow_utils.get_mlflow_host_token`, `mlflow_tools.export_import.utils.create_client`) so tests never require real credentials or network access. Assert that key client methods are invoked with expected arguments.\n\nAlways identify the specific module and function under test from the repograph output. For each target file, provide at least one success-path test and one failure-path test that prove the project's own behavior (copy/import/export, CLI commands, etc.).\n\nCRITICAL - Django Testing Requirements:
+Helper Tests must be:
+- High-level and behavior-based.
+- Written only against the repo's public abstractions (functions/classes exposed by the project).
+- Stable across the migration (the same assertions must hold both before and after replacing the library).
+
+Helper Tests may not:
+- Import Library A or Library B.
+- Assert library-specific error messages.
+- Depend on parsing formats or behaviors unique to a specific library implementation.
+
+Instead, target library-independent invariants such as:
+- Default values and argument validation.
+- Type conversions and data structure shape.
+- Stable flags/fields and behavior defined by the project itself.
+- Presence/absence of required arguments or lifecycle hooks.
+
+Your tests must pass on both the original implementation (using Library A) and the migrated implementation (using Library B).
+
+Mock external dependencies only; do not patch functions/classes defined in the source file under test. Let the real implementation run whenever possible. Patch file/network/DB I/O only when required, and patch each target at most once per test.
+
+When you need path-like objects, prefer real Path(...) instances. If you must mock path.joinpath(), assign a Mock to the return value and configure is_file() and suffix instead of chaining return_value assignments.
+
+Import helpers from the source module directly (e.g., `from convert import convert_file`) and call them by name. Avoid dotted calls like convert.convert(...). If the production code filters resources (Path.iterdir, os.listdir, etc.), configure mocks so the predicates remain true—return objects where is_file() is True and suffix equals '.json'. Whenever you mock domain objects, set every attribute or method that the production code touches, or build real instances via project utilities.
+
+IMPORTANT - Handling Asynchronous Code:
+If any function under test is asynchronous (uses `async def`), follow these rules:
+1. Use `@pytest.mark.asyncio` decorator on your test function
+2. Use `async def` for your test function (make it asynchronous)
+3. Use `await` when calling async functions
+4. Use `unittest.mock.AsyncMock` instead of `Mock` for async functions
+5. When mocking async functions, use: `mock_obj = AsyncMock(return_value=expected_value)`
+6. Never use regular `Mock` objects for async code - they cannot be awaited
+
+Example of correct async test:
+```python
+from __future__ import annotations
+import pytest
+from unittest.mock import AsyncMock
+
+@pytest.mark.asyncio
+async def test_async_function():
+    mock_service = AsyncMock()
+    mock_service.fetch_data = AsyncMock(return_value={'key': 'value'})
+    result = await my_async_function(mock_service)
+    assert result is not None
+```
+
+CRITICAL - External Service Handling:
+For services requiring HTTP servers, databases, message queues, or other external infrastructure that cannot be reliably mocked or are not critical to unit testing:
+1. Wrap imports of such services in try/except blocks and skip the test if the import fails.
+2. Alternatively, completely skip tests that require running unavailable external services.
+3. Example: If a function requires a live HTTP server, either mock the HTTP client/requests library, or skip the test.
+4. Never let tests hang or fail due to missing external services; always provide graceful skip mechanisms using pytest.skip().
+
+Focus on uncovered lines in the latest coverage report and skip tests that only hit lines with existing coverage. Generate normal (happy-path) scenarios first, but include at least one exception-path test when those lines remain uncovered. Every proposed test must add new line or branch coverage; skip any test that duplicates prior behavior.
+
+When a module depends on mlflow or other external services, mock mlflow clients and helper utilities (e.g., `mlflow_tools.common.mlflow_utils.get_mlflow_host_token`, `mlflow_tools.export_import.utils.create_client`) so tests never require real credentials or network access. Assert that key client methods are invoked with expected arguments.
+
+Always identify the specific module and function under test from the repograph output. For each target file, provide at least one success-path test and one failure-path test that prove the project's own behavior (copy/import/export, CLI commands, etc.).
+
+CRITICAL - Django Testing Requirements:
 If the repository uses Django:
 - NEVER import Django models, User, or any ORM objects directly in tests
 - NEVER call Django ORM methods like User.objects.create(), Model.save(), etc.
@@ -82,7 +144,58 @@ If the repository uses Django:
 - Never import or instantiate Django apps, settings, or initialization code
 - Test only the pure logic of the function, not the Django framework integration
 
-Avoid trivial "import" tests; each test should verify state changes, outputs, or error handling in the target module.\n"""
+Avoid trivial "import" tests; each test should verify state changes, outputs, or error handling in the target module.
+
+---
+
+***** CRITICAL GLOBAL RULES FOR PASS-TO-PASS TESTS *****
+
+You are generating PASS-TO-PASS Python unit tests.
+
+HARD REQUIREMENT: FRAMEWORK/LIBRARY NEUTRAL TESTING
+These frameworks MUST NEVER be imported directly:
+    flask, flask_restful, fastapi, django,
+    argparse, click, requests, httpx,
+    starlette, sanic, aiohttp, pydantic
+
+Instead:
+- ALWAYS replace framework/library classes with mocks
+- Use: from unittest.mock import patch, MagicMock
+- ALWAYS test structure, NOT framework behavior
+- NEVER assert real framework types
+
+PASS-TO-PASS TESTS MUST:
+- Never import libraryA
+- Never import libraryB
+- Never assert Client from either library
+- Never call real Client()
+- Only mock when needed: @patch("module.Client", MagicMock())
+
+EXAMPLE - GOOD TEST (correct):
+    def test_module_initialization():
+        import mymodule
+        assert hasattr(mymodule, "ClientWrapper")
+
+EXAMPLE - BETTER TEST (when Client is required):
+    from unittest.mock import patch, MagicMock
+
+    @patch("mymodule.Client", MagicMock())
+    def test_wrapper_works_with_mock():
+        import mymodule
+        wrapper = mymodule.ClientWrapper()
+        assert wrapper is not None
+
+EXAMPLE - BAD TESTS (NEVER DO):
+    from libraryA import Client       # ❌ forbidden
+    from libraryB import Client       # ❌ forbidden
+    real_client = Client()            # ❌ forbidden
+    assert isinstance(wrapper.client, Client)   # ❌ framework-dependent
+
+Key principle: Test the CALLER (code that uses A/B), NOT the libraries A/B directly.
+Tests must be invariant across migration.
+
+***** END OF CRITICAL GLOBAL RULES *****
+"""
 
 
 def _load_yaml(path: Optional[Path]) -> Dict[str, Any]:

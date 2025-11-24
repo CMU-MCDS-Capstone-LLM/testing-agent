@@ -619,52 +619,59 @@ class UnitTestGenerator:
 
         return new_code
 
-    def _mentions_banned_modules(self, *code_snippets: str) -> bool:
-        if not self.banned_modules:
-            return False
-        return any(
-            self._code_mentions_banned_module(snippet)
-            for snippet in code_snippets
-            if snippet
-        )
-
-    def _code_mentions_banned_module(self, code_snippet: str) -> bool:
-        """Check if code contains REAL imports of banned modules.
-
-        Only bans actual import statements like:
-        - from flask import Flask
-        - import flask
-
-        Allows mocking and referencing like:
-        - @patch("module.Flask", MagicMock())
-        - assert hasattr(module, 'Flask')
+    def _mentions_banned_modules(self, code: str, imports: str = "") -> bool:
         """
-        if not code_snippet:
+        Return True ONLY if the test performs REAL imports of banned modules.
+
+        Allowed:
+        - patch("xxx.Flask")
+        - MagicMock()
+        - Strings mentioning Flask/Django/etc
+        - Attribute access like module.Flask
+
+        Banned:
+        - from flask import X
+        - import flask
+        - from django import X
+        """
+        if not code and not imports:
             return False
 
+        combined = f"{imports}\n{code}"
+
+        banned_modules = getattr(self, "banned_modules", [])
+
+        # -----------------------------
+        # 1. AST-based real import check
+        # -----------------------------
+        import ast
         try:
-            tree = ast.parse(code_snippet, type_comments=True)
+            tree = ast.parse(combined, type_comments=True)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name in banned_modules:
+                            return True
+                if isinstance(node, ast.ImportFrom):
+                    if node.module in banned_modules:
+                        return True
         except SyntaxError:
-            # Fallback: use regex to detect ONLY real import statements
+            # -----------------------------
+            # 2. Fallback: regex detection of REAL imports
+            # -----------------------------
             import re
-            for module in self.banned_modules:
-                # Match: from flask import X or import flask
-                if re.search(rf"\bfrom\s+{re.escape(module)}\s+import", code_snippet):
+            for module in banned_modules:
+                # from flask import X
+                if re.search(rf"\bfrom\s+{re.escape(module)}\s+import\b", combined):
                     return True
-                if re.search(rf"\bimport\s+{re.escape(module)}\b", code_snippet):
+                # import flask
+                if re.search(rf"\bimport\s+{re.escape(module)}\b", combined):
                     return True
+
+            # Do NOT ban mere mentions like "Flask", "Django", etc.
             return False
 
-        # Use AST to detect real imports (most reliable method)
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    root = alias.name.split(".")[0]
-                    if root in self.banned_modules:
-                        return True
-            elif isinstance(node, ast.ImportFrom):
-                if node.module and node.module.split(".")[0] in self.banned_modules:
-                    return True
+        # If AST parse succeeded, ANY real import would have been caught above.
         return False
 
     @staticmethod
@@ -673,16 +680,51 @@ class UnitTestGenerator:
     ) -> str:
         if not import_block:
             return import_block
+        # Prefer AST rewrite so we do not leave dangling parentheses like "from x import ("
+        try:
+            tree = ast.parse(import_block, type_comments=True)
+        except SyntaxError:
+            # Fallback: line-based filter, drop empty paren lines as well
+            filtered_lines: list[str] = []
+            for line in import_block.splitlines():
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                if any(f" as {alias}" in stripped for alias in banned_aliases):
+                    continue
+                if stripped in {"(", ")"}:
+                    continue
+                filtered_lines.append(stripped)
+            return "\n".join(filtered_lines)
 
-        filtered_lines: list[str] = []
-        for line in import_block.splitlines():
-            stripped = line.strip()
-            if not stripped:
-                continue
-            if any(f" as {alias}" in stripped for alias in banned_aliases):
-                continue
-            filtered_lines.append(stripped)
-        return "\n".join(filtered_lines)
+        rebuilt: list[str] = []
+        for node in tree.body:
+            if isinstance(node, ast.Import):
+                kept = [
+                    alias for alias in node.names if (alias.asname or "") not in banned_aliases
+                ]
+                if not kept:
+                    continue
+                parts = [
+                    f"{alias.name} as {alias.asname}" if alias.asname else alias.name
+                    for alias in kept
+                ]
+                rebuilt.append(f"import {', '.join(parts)}")
+            elif isinstance(node, ast.ImportFrom):
+                kept = [
+                    alias for alias in node.names if (alias.asname or "") not in banned_aliases
+                ]
+                if not kept:
+                    continue
+                level_prefix = "." * getattr(node, "level", 0)
+                module_name = node.module or ""
+                parts = [
+                    f"{alias.name} as {alias.asname}" if alias.asname else alias.name
+                    for alias in kept
+                ]
+                rebuilt.append(f"from {level_prefix}{module_name} import {', '.join(parts)}")
+
+        return "\n".join(rebuilt)
 
     def _compose_effective_instructions(self) -> str:
         base = (self.additional_instructions or "").strip()

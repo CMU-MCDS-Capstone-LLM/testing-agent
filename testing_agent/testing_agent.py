@@ -409,7 +409,12 @@ class TestingAgent:
         if test_file.resolve() != self.aggregate_test_file.resolve():
             return
 
-        stub_name = f"test_import_{module_name.replace('.', '_')}"
+        # Remove trailing .__init__ from module name (packages)
+        clean_module_name = module_name
+        if clean_module_name.endswith('.__init__'):
+            clean_module_name = clean_module_name[:-9]  # Remove '.__init__'
+
+        stub_name = f"test_import_{clean_module_name.replace('.', '_')}"
 
         try:
             current = test_file.read_text(encoding="utf-8")
@@ -590,7 +595,7 @@ class TestingAgent:
         included_files: List[Path],
         test_command: str,
     ) -> None:
-        if source_rel.parts and source_rel.parts[0] == "tests":
+        if any(part == "tests" for part in source_rel.parts):
             self.logger.info("Skipping test file listed by selector: %s", source_rel)
             return
 
@@ -610,7 +615,11 @@ class TestingAgent:
 
         import_block = self._extract_import_block(source_path, module_name)
         symbol_block = self._build_symbol_import_block(module_name, source_path)
-        combined_block_parts = [block for block in (import_block, symbol_block) if block]
+        combined_block_parts = [
+            self._sanitize_import_block(block)
+            for block in (import_block, symbol_block)
+            if block
+        ]
         combined_block = "\n".join(part for part in combined_block_parts if part.strip())
         if combined_block:
             self._ensure_import_block(test_file, combined_block)
@@ -701,33 +710,79 @@ class TestingAgent:
                 break
 
         def rewrite(line: str) -> str:
+            # Handle relative imports (from . import or from ..module import)
             match = re.match(
                 r"^(\s*from\s+)(\.+)([A-Za-z_][\w\.]*)?(\s+import\b.*)$",
                 line,
             )
-            if not match:
-                return line
+            if match:
+                dots = match.group(2)
+                suffix = match.group(4)
+                rel_target = match.group(3) or ""
 
-            dots = match.group(2)
-            suffix = match.group(4)
-            rel_target = match.group(3) or ""
+                parts = module_name.split(".")
+                if len(parts) <= 1:
+                    # Cannot resolve relative imports for single-level modules
+                    # Comment out the import to prevent errors
+                    return f"# {line.strip()}  # [RELATIVE IMPORT - COULD NOT RESOLVE]"
 
-            parts = module_name.split(".")
-            if len(parts) <= 1:
-                return line
+                level = len(dots)
+                if level > len(parts) - 1:
+                    # Relative import goes beyond module hierarchy
+                    return f"# {line.strip()}  # [RELATIVE IMPORT - OUT OF RANGE]"
 
-            level = len(dots)
-            if level > len(parts) - 1:
-                return line
+                base_parts = parts[: -(level)]
+                if rel_target:
+                    base_parts.append(rel_target)
+                target_module = ".".join(base_parts)
+                return f"{match.group(1)}{target_module}{suffix}"
 
-            base_parts = parts[: -(level)]
-            if rel_target:
-                base_parts.append(rel_target)
-            target_module = ".".join(base_parts)
-            return f"{match.group(1)}{target_module}{suffix}"
+            # Keep absolute imports as-is. Do not try to add prefixes like "src."
+            # Different projects have different structures (some use src/, some don't).
+            # Let the import resolve naturally or fail at test time if it's invalid.
+
+            return line
 
         rewritten = [rewrite(line) for line in collected if line.strip()]
-        return "\n".join(rewritten)
+        result = "\n".join(rewritten)
+
+        # Clean up any malformed imports that resulted from the rewrite
+        result = self._clean_import_block_after_rewrite(result)
+        return result
+
+    def _clean_import_block_after_rewrite(self, content: str) -> str:
+        """Clean up malformed imports after rewriting relative imports to comments.
+
+        When relative imports are commented out, their multi-line content may leave
+        orphaned identifiers that need to be removed.
+        """
+        lines = content.split('\n')
+        cleaned_lines = []
+        skip_until_real_import = False
+
+        for line in lines:
+            stripped = line.strip()
+
+            # Check if this is a commented import opening: # from ... import (
+            if stripped.startswith('#') and 'import' in stripped and '(' in stripped and ')' not in stripped:
+                # Mark to skip following orphaned identifiers
+                skip_until_real_import = True
+                cleaned_lines.append(line)
+                continue
+
+            # If we're skipping, check if this line is an orphaned identifier
+            if skip_until_real_import:
+                # Skip empty lines and bare identifiers
+                if not stripped or re.match(r'^[A-Za-z_]\w*\s*,?\s*$', stripped):
+                    self.logger.debug(f"Removing orphaned identifier: {line}")
+                    continue
+                else:
+                    # Hit a real statement, stop skipping
+                    skip_until_real_import = False
+
+            cleaned_lines.append(line)
+
+        return '\n'.join(cleaned_lines)
 
     def _extract_defined_symbols(self, source_path: Path) -> List[str]:
         try:
@@ -812,6 +867,25 @@ class TestingAgent:
             chunk = ", ".join(symbols[idx : idx + chunk_size])
             lines.append(f"from {module_name} import {chunk}")
         return "\n".join(lines)
+
+    @staticmethod
+    def _sanitize_import_block(import_block: str) -> str:
+        """Drop import lines that fail to parse (e.g., names with dashes)."""
+        if not import_block:
+            return ""
+
+        valid_lines: List[str] = []
+        for line in import_block.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                ast.parse(stripped)
+            except SyntaxError:
+                continue
+            valid_lines.append(stripped)
+
+        return "\n".join(valid_lines)
 
     def _ensure_import_block(self, test_file: Path, import_block: str) -> None:
         try:
