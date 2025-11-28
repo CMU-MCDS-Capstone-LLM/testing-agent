@@ -80,6 +80,14 @@ class ReportGenerator:
                         <div><strong>STDOUT:</strong> <pre><code class="language-{{ result.language|lower }}">{{ result.stdout }}</code></pre></div>
                         <div><strong>Test Code:</strong> <pre><code class="language-{{ result.language|lower }}">{{ result.test_code }}</code></pre></div>
                         <div><strong>Imports:</strong> <pre><code class="language-{{ result.language|lower }}">{{ result.imports }}</code></pre></div>
+                        {% if result.migration_helper or result.migration_eval %}
+                        <div><strong>Migration Line Coverage:</strong>
+                            <ul>
+                                <li>Helper (repograph): {{ result.migration_helper or 'n/a' }}</li>
+                                <li>Eval (repoyaml): {{ result.migration_eval or 'n/a' }}</li>
+                            </ul>
+                        </div>
+                        {% endif %}
                     </details>
                 </td>
             </tr>

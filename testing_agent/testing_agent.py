@@ -26,6 +26,7 @@ from testing_agent.repograph_runner.repograph_selector import (
     RepoGraphRunner,
 )
 from .config_loader import TestingAgentConfig
+from .name_map_utils import load_name_map
 
 import logging
 logger = logging.getLogger(__name__)
@@ -73,26 +74,49 @@ class TestingAgent:
         self._export_api_keys()
         self._ensure_pythonpath()
         self._ensure_directories()
+        self._ensure_stub_conftest()
 
-        repograph_result = self._run_repograph()
-        cov_targets, include_expression = self._build_pytest_arguments(repograph_result)
-        filter_expression = self._compose_filter_expression(
-            include_expression, self.config.pytest_exclude_expr
-        )
-        test_command = self._compose_test_command(cov_targets, filter_expression)
+        # Detect eval mode from config (migration.eval_mode flag)
+        eval_mode = bool(self.config.migration.get("eval_mode", False))
 
-        included_files = self._collect_workspace_includes(repograph_result)
-        source_files = self._collect_source_files(repograph_result)
-
-        if self.config.html_report_path:
-            self._prepare_html_report()
-
-        for source_rel in source_files:
-            self._process_source_file(
-                source_rel=source_rel,
-                included_files=included_files,
-                test_command=test_command,
+        if eval_mode:
+            source_files = self._collect_repoyaml_files()
+            included_files: List[Path] = []
+            filter_expression = self._compose_filter_expression(
+                "", self.config.pytest_exclude_expr
             )
+            test_command = self._compose_test_command([], filter_expression)
+
+            if self.config.html_report_path:
+                self._prepare_html_report()
+
+            for source_rel in source_files:
+                self._process_source_file(
+                    source_rel=source_rel,
+                    included_files=included_files,
+                    test_command=test_command,
+                    eval_mode=True,
+                )
+        else:
+            repograph_result = self._run_repograph()
+            cov_targets, include_expression = self._build_pytest_arguments(repograph_result)
+            filter_expression = self._compose_filter_expression(
+                include_expression, self.config.pytest_exclude_expr
+            )
+            test_command = self._compose_test_command(cov_targets, filter_expression)
+
+            included_files = self._collect_workspace_includes(repograph_result)
+            source_files = self._collect_source_files(repograph_result)
+
+            if self.config.html_report_path:
+                self._prepare_html_report()
+
+            for source_rel in source_files:
+                self._process_source_file(
+                    source_rel=source_rel,
+                    included_files=included_files,
+                    test_command=test_command,
+                )
 
         # Clean up failed and skipped tests to ensure 100% pass rate
         self._cleanup_failing_tests()
@@ -377,6 +401,121 @@ class TestingAgent:
         cov_targets = {target for target in cov_targets if target}
         return cov_targets, include_tokens
 
+    # ------------------------------------------------------------------
+    # Stub generation for missing migration deps
+    # ------------------------------------------------------------------
+    def _ensure_stub_conftest(self) -> None:
+        """
+        Generate a lightweight conftest.py that stubs out source/target libraries
+        (and their imported submodules) so tests can run in environments where
+        neither library is installed.
+        """
+        lib_prefixes: List[str] = []
+        migration = self.config.migration or {}
+        for key in ("source", "target", "library_a", "libraryA", "library_b", "libraryB"):
+            val = migration.get(key)
+            if isinstance(val, str) and val.strip():
+                lib_prefixes.append(val.strip())
+
+        lib_prefixes = sorted({p for p in lib_prefixes if p})
+        if not lib_prefixes:
+            return
+
+        module_names = self._collect_imported_modules(lib_prefixes)
+        if not module_names:
+            return
+
+        target_dir = (
+            self.aggregate_test_file.parent
+            if self.aggregate_test_file
+            else self.config.test_command_dir
+        )
+        conftest_path = (target_dir / "conftest.py").resolve()
+        conftest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        marker = "# AUTO-GENERATED STUBS FOR MIGRATION LIBRARIES"
+        try:
+            existing = conftest_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            existing = ""
+        except OSError as exc:
+            self.logger.warning("Unable to read %s: %s", conftest_path, exc)
+            return
+
+        # If user already defines pytest_configure, do not inject to avoid overriding
+        if marker in existing or "def pytest_configure" in existing:
+            return
+
+        block_lines = [
+            marker,
+            "import sys",
+            "import types",
+            "",
+            "def pytest_configure():",
+            "    module_names = [",
+        ]
+        for name in sorted(module_names):
+            block_lines.append(f"        '{name}',")
+        block_lines.extend(
+            [
+                "    ]",
+                "    created = {}",
+                "    for name in module_names:",
+                "        if name not in sys.modules:",
+                "            created[name] = types.ModuleType(name)",
+                "    for name in module_names:",
+                "        mod = sys.modules.get(name) or created.get(name) or types.ModuleType(name)",
+                "        sys.modules.setdefault(name, mod)",
+                "        parts = name.split('.')",
+                "        for i in range(1, len(parts)):",
+                "            parent = '.'.join(parts[:i])",
+                "            if parent not in sys.modules:",
+                "                sys.modules[parent] = created.get(parent) or types.ModuleType(parent)",
+            ]
+        )
+        block = "\n".join(block_lines) + "\n"
+
+        new_content = existing + (
+            "\n\n" if existing and not existing.endswith("\n") else "\n"
+        ) + block
+
+        try:
+            conftest_path.write_text(new_content.strip() + "\n", encoding="utf-8")
+            self.logger.info("Wrote migration stub conftest to %s", conftest_path)
+        except OSError as exc:
+            self.logger.warning("Unable to write %s: %s", conftest_path, exc)
+
+    def _collect_imported_modules(self, prefixes: Sequence[str]) -> Set[str]:
+        """AST-scan the project to find modules that start with given prefixes."""
+        root = self.config.project_root
+        hits: Set[str] = set()
+        skip_dirs = {".venv", "venv", ".git", "__pycache__", ".testing_agent"}
+
+        for path in root.rglob("*.py"):
+            if any(part in skip_dirs or part.startswith(".") for part in path.parts):
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+                tree = ast.parse(text)
+            except (OSError, SyntaxError):
+                continue
+
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        for prefix in prefixes:
+                            name = alias.name
+                            if name == prefix or name.startswith(prefix + "."):
+                                hits.add(name)
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    mod = node.module
+                    for prefix in prefixes:
+                        if mod == prefix or mod.startswith(prefix + "."):
+                            hits.add(mod)
+                            for alias in node.names:
+                                hits.add(f"{mod}.{alias.name}")
+        return hits
+
     def _clean_malformed_imports(self, content: str) -> str:
         """Remove common malformed import patterns that LLMs sometimes generate.
 
@@ -576,6 +715,35 @@ class TestingAgent:
             files.update(callers.get("files", []))
         return sorted(Path(fname) for fname in files)
 
+    def _collect_repoyaml_files(self) -> List[Path]:
+        """Return source files listed in repo-yaml (via name_map)."""
+        if self.config.repo_yaml_path:
+            yaml_path = self.config.repo_yaml_path
+        else:
+            return []
+        if not yaml_path.exists():
+            self.logger.warning("Repo-yaml not found: %s", yaml_path)
+            return []
+
+        try:
+            data = yaml.safe_load(yaml_path.read_text()) or {}
+        except Exception as exc:
+            self.logger.warning("Failed to load repo-yaml %s: %s", yaml_path, exc)
+            return []
+
+        files: List[Path] = []
+        for entry in data.get("files", []) or []:
+            rel = entry.get("path")
+            if not rel:
+                continue
+            rel_path = Path(rel)
+            if "test" in rel_path.parts:
+                continue
+            files.append(rel_path)
+        if not files:
+            self.logger.warning("No files listed in repo-yaml %s", yaml_path)
+        return files
+
     def _collect_workspace_includes(self, result: RepoGraphResult) -> List[Path]:
         files: Set[str] = set()
         for callers in result.workspace_callers.values():
@@ -594,6 +762,7 @@ class TestingAgent:
         source_rel: Path,
         included_files: List[Path],
         test_command: str,
+        eval_mode: bool = False,
     ) -> None:
         if any(part == "tests" for part in source_rel.parts):
             self.logger.info("Skipping test file listed by selector: %s", source_rel)
@@ -625,7 +794,7 @@ class TestingAgent:
             self._ensure_import_block(test_file, combined_block)
 
         self._ensure_module_import_stub(test_file, module_name)
-        self._run_cover_agent(source_path, test_file, included_files, test_command)
+        self._run_cover_agent(source_path, test_file, included_files, test_command, eval_mode=eval_mode)
 
     def _resolve_test_file(self, source_path: Path) -> tuple[Path, bool]:
         if self.aggregate_test_file:
@@ -928,6 +1097,7 @@ class TestingAgent:
         test_file: Path,
         included_files: List[Path],
         test_command: str,
+        eval_mode: bool = False,
     ) -> None:
         self.logger.info("Running cover-agent for source %s", source_path)
 
@@ -973,6 +1143,18 @@ class TestingAgent:
             cmd.append("--included-files")
             cmd.extend(str(path) for path in included_files)
 
+        if eval_mode:
+            eval_cov = Path(self.config.code_coverage_report_path).with_name("coverage_eval.xml")
+            cmd.extend(
+                [
+                    "--eval-mode",
+                    "--eval-test-file-path",
+                    str(test_file),
+                    "--eval-coverage-report-path",
+                    str(eval_cov),
+                ]
+            )
+
         cmd.extend(["--run-tests-multiple-times", str(self.config.run_tests_multiple_times)])
         cmd.extend(["--branch", self.config.branch])
 
@@ -988,6 +1170,8 @@ class TestingAgent:
             project_root=str(self.config.project_root),
             test_file_output_path="",
             code_coverage_report_path=str(self.config.code_coverage_report_path),
+            eval_test_file_path=str(test_file) if eval_mode else "",
+            eval_coverage_report_path=str(Path(self.config.code_coverage_report_path).with_name("coverage_eval.xml")) if eval_mode else "",
             test_command=test_command,
             test_command_dir=str(self.config.test_command_dir),
             included_files=[str(path) for path in included_files] if included_files else [],
@@ -1007,6 +1191,7 @@ class TestingAgent:
             diff_coverage=self.config.diff_coverage,
             run_each_test_separately=self.config.run_each_test_separately,
             banned_modules=banned_modules,
+            eval_mode=eval_mode,
         )
 
         divider = "=" * 38

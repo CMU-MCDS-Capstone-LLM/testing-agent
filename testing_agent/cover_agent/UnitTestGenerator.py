@@ -12,6 +12,7 @@ from testing_agent.cover_agent.FilePreprocessor import FilePreprocessor
 from testing_agent.cover_agent.AgentCompletionABC import AgentCompletionABC
 from testing_agent.cover_agent.settings.config_loader import get_settings
 from testing_agent.cover_agent.utils import load_yaml
+from .LineCoverage import load_repoyaml_refs
 
 MAX_TESTS_PER_RUN = 4
 
@@ -32,6 +33,7 @@ class UnitTestGenerator:
         use_report_coverage_feature_flag: bool = False,
         project_root: str = "",
         banned_modules: Iterable[str] | None = None,
+        eval_mode: bool = False,
     ):
         """
         Initialize the UnitTestGenerator class with the provided parameters.
@@ -76,6 +78,35 @@ class UnitTestGenerator:
             for module in (banned_modules or [])
             if str(module).strip()
         }
+        self.eval_mode = eval_mode
+        self.migration_targets = None
+
+        if self.eval_mode:
+            repo_root = self.project_root or os.getcwd()
+            try:
+                targets = load_repoyaml_refs(
+                    repo_root,
+                    name_map_path=os.path.join(
+                        os.path.dirname(__file__), "..", "..", "name_map.json"
+                    ),
+                    repo_yaml_dir=os.path.join(
+                        os.path.dirname(__file__),
+                        "..",
+                        "..",
+                        "full_data-success_only-all",
+                        "repo-yamls",
+                    ),
+                )
+                if targets:
+                    self.migration_targets = [f"{rel}:{ln}" for rel, ln in targets][:50]
+                    # If source file missing, default to first repo-yaml file
+                    if not os.path.exists(self.source_file_path):
+                        first_rel, _ = targets[0]
+                        candidate = os.path.join(repo_root, first_rel)
+                        if os.path.exists(candidate):
+                            self.source_file_path = candidate
+            except Exception:
+                self.migration_targets = None
 
         self.logger = logging.getLogger(__name__)
 
@@ -729,6 +760,18 @@ class UnitTestGenerator:
     def _compose_effective_instructions(self) -> str:
         base = (self.additional_instructions or "").strip()
         supplements: list[str] = []
+
+        if self.eval_mode:
+            supplements.append(
+                "Eval mode: focus on repo-yaml migration points (target library). "
+                "Do not rely on repograph/source-library context; tests should exercise target-side behavior only."
+            )
+            if self.migration_targets:
+                targets_str = ", ".join(self.migration_targets[:10])
+                supplements.append(
+                    f"Migration lines to hit (repo-yaml): {targets_str}. "
+                    "Keep tests minimal; stub external deps as needed."
+                )
 
         if self.banned_modules:
             modules_str = ", ".join(sorted(self.banned_modules))

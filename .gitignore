@@ -1,3 +1,7 @@
+output/
+helper_scripts/
+repo_backups/
+
 venv38/
 full_data-success_only-all/
 *.py[cod]

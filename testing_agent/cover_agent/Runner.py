@@ -9,6 +9,13 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Mapping, Optional, Sequence
 
+from testing_agent.cover_agent.LineCoverage import (
+    load_coverage_hits as lc_load_coverage_hits,
+    load_repograph_refs,
+    load_repoyaml_refs,
+    compute_hit_rate,
+)
+
 
 @dataclass
 class CommandResult:

@@ -8,8 +8,7 @@ from typing import Dict, Optional
 
 
 def load_name_map(
-    *,
-    base_dir: Path,
+    base_dir: Optional[Path] = None,
     name_map_path: Optional[Path] = None,
 ) -> Dict[str, str]:
     """
@@ -19,7 +18,16 @@ def load_name_map(
         base_dir: Root directory containing name_map.json (default location).
         name_map_path: Optional explicit path to name_map.json.
     """
-    path = Path(name_map_path) if name_map_path else (base_dir / "name_map.json")
+    # Allow callers to provide either a base directory containing name_map.json
+    # or an explicit mapping file path. Some call sites pass the mapping file
+    # positionally, so we treat a lone positional argument as the file path.
+    if base_dir is None and name_map_path is None:
+        raise ValueError("Either base_dir or name_map_path must be provided")
+    if base_dir is None and name_map_path is not None:
+        path = Path(name_map_path)
+    else:
+        assert base_dir is not None
+        path = Path(name_map_path) if name_map_path else (base_dir / "name_map.json")
     if not path.exists():
         return {}
     data = json.loads(path.read_text(encoding="utf-8"))

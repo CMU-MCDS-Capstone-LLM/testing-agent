@@ -14,6 +14,18 @@ from testing_agent.cover_agent.FilePreprocessor import FilePreprocessor
 from testing_agent.cover_agent.Runner import CommandResult, LocalRunner, Runner
 from testing_agent.cover_agent.settings.config_loader import get_settings
 from testing_agent.cover_agent.utils import load_yaml
+from .LineCoverage import (
+    load_coverage_hits as lc_load_coverage_hits,
+    load_repograph_refs,
+    load_repoyaml_refs,
+    compute_hit_rate,
+)
+from testing_agent.cover_agent.LineCoverage import (
+    load_coverage_hits as lc_load_coverage_hits,
+    load_repograph_refs,
+    load_repoyaml_refs,
+    compute_hit_rate,
+)
 
 
 class UnitTestValidator:
@@ -37,6 +49,7 @@ class UnitTestValidator:
         comparison_branch: str = "main",
         num_attempts: int = 1,
         runner: Optional[Runner] = None,
+        eval_mode: bool = False,
     ):
         """
         Initialize the UnitTestValidator class with the provided parameters.
@@ -87,6 +100,12 @@ class UnitTestValidator:
         self.agent_completion = agent_completion
         self.max_run_time = max_run_time
         self.command_runner = runner or LocalRunner()
+        self.eval_mode = eval_mode
+        self.current_migration_helper = None
+        self.current_migration_eval = None
+        self.eval_mode = eval_mode
+        self.current_migration_helper = None
+        self.current_migration_eval = None
 
         self.logger = logging.getLogger(__name__)
 
@@ -805,6 +824,31 @@ class UnitTestValidator:
                 )
             )
             self.code_coverage_report = f"Lines covered: {lines_covered}\nLines missed: {lines_missed}\nPercentage covered: {round(percentage_covered * 100, 2)}%"
+
+        # best-effort migration point coverage stats
+        try:
+            repo_root = self.project_root or os.getcwd()
+            helper_refs = None if self.eval_mode else load_repograph_refs(repo_root)
+            eval_refs = load_repoyaml_refs(
+                repo_root,
+                name_map_path=os.path.join(
+                    os.path.dirname(__file__), "..", "..", "name_map.json"
+                ),
+                repo_yaml_dir=os.path.join(
+                    os.path.dirname(__file__),
+                    "..",
+                    "..",
+                    "full_data-success_only-all",
+                    "repo-yamls",
+                ),
+            )
+            helper_hits = None if self.eval_mode else lc_load_coverage_hits(repo_root, cov_path=self.code_coverage_report_path)
+            eval_hits = lc_load_coverage_hits(repo_root)
+            self.current_migration_helper, _ = compute_hit_rate(helper_refs, helper_hits)
+            self.current_migration_eval, _ = compute_hit_rate(eval_refs, eval_hits)
+        except Exception:
+            self.current_migration_helper = None
+            self.current_migration_eval = None
         return percentage_covered, coverage_percentages
 
     def generate_diff_coverage_report(self):
