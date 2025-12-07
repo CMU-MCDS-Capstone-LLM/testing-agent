@@ -17,6 +17,12 @@ def parse_args():
         "--test-file-path", required=True, help="Path to the input test file."
     )
     parser.add_argument(
+        "--eval-test-file-path",
+        required=False,
+        help="Path to the eval test file (e.g., test_eval_additional.py). If provided with --eval-mode, this file is used and coverage is written to coverage_eval.xml.",
+        default=None,
+    )
+    parser.add_argument(
         "--project-root",
         required=False,
         help="Path to the root of the project.",
@@ -33,6 +39,12 @@ def parse_args():
         "--code-coverage-report-path",
         required=True,
         help="Path to the code coverage report file.",
+    )
+    parser.add_argument(
+        "--eval-coverage-report-path",
+        required=False,
+        help="Path to eval coverage report (defaults to .testing_agent/coverage_eval.xml when --eval-mode).",
+        default=None,
     )
     parser.add_argument(
         "--test-command",
@@ -135,6 +147,18 @@ def parse_args():
         type=bool,
         default=False,
         help="Run each test separately. Default: False",
+    )
+    parser.add_argument(
+        "--banned-modules",
+        nargs="*",
+        default=None,
+        help="Module names that generated tests must not import or reference.",
+    )
+
+    parser.add_argument(
+        "--eval-mode",
+        action="store_true",
+        help="Use eval test path / repo-yaml context; coverage will be written to eval coverage report path.",
     )
 
     return parser.parse_args()

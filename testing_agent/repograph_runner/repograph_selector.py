@@ -153,6 +153,7 @@ def guess_module_and_qualpath(symbol: str, repo_root: Path) -> Tuple[str, Option
     Strategy:
     1. Temporarily insert repo_root into sys.path.
     2. Try longest prefix imports, falling back to 'first component' if none succeed.
+    3. Try common package name mappings if direct import fails (e.g., attr -> attrs).
 
     Returns:
         (module, qualpath or None)
@@ -184,14 +185,80 @@ def guess_module_and_qualpath(symbol: str, repo_root: Path) -> Tuple[str, Option
             except ValueError:
                 pass
 
+    # If direct import failed, try common package name mappings
+    # The repo.yaml source field may be a package name (e.g., "slackclient", "pyyaml")
+    # but we need the module name for find_refs_by_fqn (e.g., "slack", "yaml")
+    # This maps package_name -> module_name when direct import fails
+    common_mappings = {
+        "slackclient": "slack",  # slackclient package, slack module
+        "slack-sdk": "slack_sdk",  # slack-sdk package, slack_sdk module
+        "pyyaml": "yaml",  # pyyaml package, yaml module
+        "beautifulsoup4": "bs4",  # beautifulsoup4 package, bs4 module
+        "opencv-python": "cv2",  # opencv-python package, cv2 module
+        "scikit-learn": "sklearn",  # scikit-learn package, sklearn module
+        "pillow": "PIL",  # pillow package, PIL module
+    }
+
+    first_part = parts[0]
+    if first_part in common_mappings:
+        # Use the mapped module name directly without checking if it's importable,
+        # since this function runs in the testing-agent environment which may not
+        # have the target libraries installed. The target environment will have them.
+        mapped_name = common_mappings[first_part]
+        qualpath = ".".join(parts[1:]) or None
+        return mapped_name, qualpath
+
     module = parts[0]
     qualpath = ".".join(parts[1:]) or None
     return module, qualpath
 
 
+def has_module_level_side_effects(file_path: Path) -> bool:
+    """
+    Check if a Python file has module-level side effects that would cause
+    import-time failures (e.g., instantiating clients, making network calls).
+
+    Returns True if the file contains suspicious patterns at module level.
+    """
+    try:
+        content = file_path.read_text()
+
+        # Check for module-level instantiation of HTTP clients, database connections, etc.
+        suspicious_patterns = [
+            r'^\s*\w+\s*=\s*\w*HttpClient\s*\(',
+            r'^\s*\w+\s*=\s*\w*Client\s*\(',
+            r'^\s*\w+\s*=\s*\w*Database\s*\(',
+            r'^\s*\w+\s*=\s*\w*Connection\s*\(',
+            r'^\s*\w+\s*=\s*requests\.',
+            r'^\s*\w+\s*=\s*mlflow\.',
+        ]
+
+        import re
+        lines = content.split('\n')
+        for i, line in enumerate(lines):
+            # Skip comments and docstrings
+            stripped = line.strip()
+            if stripped.startswith('#') or stripped.startswith('"""') or stripped.startswith("'''"):
+                continue
+
+            # Stop at function/class definitions (module level code ends)
+            if stripped.startswith('def ') or stripped.startswith('class '):
+                break
+
+            # Check for suspicious patterns
+            for pattern in suspicious_patterns:
+                if re.match(pattern, line):
+                    return True
+
+        return False
+    except Exception:
+        return False
+
+
 def format_references(repo_root: Path, refs: Iterable[Dict[str, object]]) -> Dict[str, object]:
     """
     Convert raw reference dictionaries (absolute_path, line, character) into a normalized JSON-friendly format.
+    Filters out test files, temporary/generated files, and files with module-level side effects.
 
     Returns:
         {
@@ -214,14 +281,27 @@ def format_references(repo_root: Path, refs: Iterable[Dict[str, object]]) -> Dic
     for ref in refs:
         abs_path = Path(ref["absolute_path"]).resolve()
         rel_path = abs_path.relative_to(repo_root)
+        rel_path_str = str(rel_path)
 
-        if str(rel_path) not in seen_paths:
-            seen_paths.add(str(rel_path))
-            files.append(str(rel_path))
+        # Skip test files
+        if looks_like_test(rel_path_str):
+            continue
+
+        # Skip temporary/generated files
+        if rel_path.name.startswith("_scratch_"):
+            continue
+
+        # Skip files with module-level side effects (import-time failures)
+        if has_module_level_side_effects(abs_path):
+            continue
+
+        if rel_path_str not in seen_paths:
+            seen_paths.add(rel_path_str)
+            files.append(rel_path_str)
 
         formatted_refs.append(
             {
-                "relative_path": str(rel_path),
+                "relative_path": rel_path_str,
                 "absolute_path": str(abs_path),
                 "line": ref["line"] + 1,        # convert to 1-based
                 "character": ref["character"] + 1,
@@ -232,13 +312,57 @@ def format_references(repo_root: Path, refs: Iterable[Dict[str, object]]) -> Dic
 
 
 def looks_like_test(path: str) -> bool:
+    """
+    Detect if a path looks like a test file.
+
+    Filters out:
+    - Any file in a 'tests/', 'test/', or 'testing/' directory
+    - Files matching common test naming patterns:
+      * test_*.py (pytest convention)
+      * *_test.py (pytest convention)
+      * test*.py (other test files like test.py, tests.py)
+      * *_spec.py (RSpec-like convention)
+      * spec_*.py (RSpec-like convention)
+    - pytest config files (conftest.py)
+    - Aggregated test files (test_additional.py)
+    """
     lower = path.lower()
     name = lower.split("/")[-1]
-    return (
-        "tests" in lower
-        or name.startswith("test_")
-        or name.endswith("_test.py")
-    )
+
+    # Check for test directories first
+    path_parts = lower.split("/")
+    for part in path_parts:
+        if part in ("tests", "test", "testing"):
+            return True
+
+    # Must be a .py file
+    if not name.endswith(".py"):
+        return False
+
+    # Check for test file patterns
+    base_name = name[:-3]  # Remove .py extension
+
+    # pytest patterns: test_*.py, *_test.py
+    if name.startswith("test_"):
+        return True
+    if name.endswith("_test.py"):
+        return True
+
+    # Generic test files: test.py, tests.py, testfile.py, etc.
+    if base_name == "test" or base_name == "tests" or base_name.startswith("test"):
+        return True
+
+    # RSpec-like patterns: *_spec.py, spec_*.py
+    if name.endswith("_spec.py"):
+        return True
+    if name.startswith("spec_"):
+        return True
+
+    # pytest config
+    if name == "conftest.py":
+        return True
+
+    return False
 
 
 def load_migration_config(path: Path) -> Dict[str, object]:

@@ -14,6 +14,18 @@ from testing_agent.cover_agent.FilePreprocessor import FilePreprocessor
 from testing_agent.cover_agent.Runner import CommandResult, LocalRunner, Runner
 from testing_agent.cover_agent.settings.config_loader import get_settings
 from testing_agent.cover_agent.utils import load_yaml
+from .LineCoverage import (
+    load_coverage_hits as lc_load_coverage_hits,
+    load_repograph_refs,
+    load_repoyaml_refs,
+    compute_hit_rate,
+)
+from testing_agent.cover_agent.LineCoverage import (
+    load_coverage_hits as lc_load_coverage_hits,
+    load_repograph_refs,
+    load_repoyaml_refs,
+    compute_hit_rate,
+)
 
 
 class UnitTestValidator:
@@ -37,6 +49,7 @@ class UnitTestValidator:
         comparison_branch: str = "main",
         num_attempts: int = 1,
         runner: Optional[Runner] = None,
+        eval_mode: bool = False,
     ):
         """
         Initialize the UnitTestValidator class with the provided parameters.
@@ -87,6 +100,12 @@ class UnitTestValidator:
         self.agent_completion = agent_completion
         self.max_run_time = max_run_time
         self.command_runner = runner or LocalRunner()
+        self.eval_mode = eval_mode
+        self.current_migration_helper = None
+        self.current_migration_eval = None
+        self.eval_mode = eval_mode
+        self.current_migration_helper = None
+        self.current_migration_eval = None
 
         self.logger = logging.getLogger(__name__)
 
@@ -477,6 +496,33 @@ class UnitTestValidator:
                     + original_content_lines[updated_test_insertion_point:]
                 )
                 processed_test = "\n".join(processed_test_lines)
+
+                # Clean up malformed imports before writing to file
+                processed_test = self._clean_malformed_imports(processed_test)
+
+                # FINAL SYNTAX CHECK BEFORE WRITING TO FILE
+                try:
+                    import ast
+                    ast.parse(processed_test)
+                except SyntaxError as e:
+                    self.logger.error(
+                        "Syntax error in FINAL generated test, skipping write: %s",
+                        str(e),
+                    )
+
+                    # Return FAIL but DO NOT write broken file
+                    return {
+                        "status": "FAIL",
+                        "reason": f"Final test code has syntax error: {e}",
+                        "exit_code": 1,
+                        "stderr": str(e),
+                        "stdout": "",
+                        "test": generated_test,
+                        "test_code": processed_test,
+                        "language": "python",
+                        "imports": additional_imports,
+                    }
+
                 with open(self.test_file_path, "w") as test_file:
                     test_file.write(processed_test)
                     test_file.flush()
@@ -778,6 +824,31 @@ class UnitTestValidator:
                 )
             )
             self.code_coverage_report = f"Lines covered: {lines_covered}\nLines missed: {lines_missed}\nPercentage covered: {round(percentage_covered * 100, 2)}%"
+
+        # best-effort migration point coverage stats
+        try:
+            repo_root = self.project_root or os.getcwd()
+            helper_refs = None if self.eval_mode else load_repograph_refs(repo_root)
+            eval_refs = load_repoyaml_refs(
+                repo_root,
+                name_map_path=os.path.join(
+                    os.path.dirname(__file__), "..", "..", "name_map.json"
+                ),
+                repo_yaml_dir=os.path.join(
+                    os.path.dirname(__file__),
+                    "..",
+                    "..",
+                    "full_data-success_only-all",
+                    "repo-yamls",
+                ),
+            )
+            helper_hits = None if self.eval_mode else lc_load_coverage_hits(repo_root, cov_path=self.code_coverage_report_path)
+            eval_hits = lc_load_coverage_hits(repo_root)
+            self.current_migration_helper, _ = compute_hit_rate(helper_refs, helper_hits)
+            self.current_migration_eval, _ = compute_hit_rate(eval_refs, eval_hits)
+        except Exception:
+            self.current_migration_helper = None
+            self.current_migration_eval = None
         return percentage_covered, coverage_percentages
 
     def generate_diff_coverage_report(self):
@@ -826,3 +897,107 @@ class UnitTestValidator:
                 return f.read()
         except Exception as e:
             return f"Error reading {file_path}: {e}"
+
+    def _clean_malformed_imports(self, content: str) -> str:
+        """Remove malformed import patterns that LLMs sometimes generate.
+
+        Examples:
+        - `from module import (` with empty closing bracket on next line
+        - `from module import (  )` on a single line with empty brackets
+        - Orphaned identifiers that aren't part of any import/from statement
+        - Broken import statements where the from/import is interrupted
+        """
+        import re
+        lines = content.split('\n')
+        cleaned_lines = []
+        i = 0
+        skip_until_next_import = False
+
+        while i < len(lines):
+            line = lines[i]
+            stripped = line.strip()
+
+            # Check for single-line empty import: from X import (  )
+            if re.search(r'\bfrom\s+[\w.]+\s+import\s*\(\s*\)', line):
+                self.logger.debug(f"Removing empty import statement: {line}")
+                i += 1
+                continue
+
+            # Check for multi-line import opening: from X import (
+            # followed by just ) on the next line
+            if re.search(r'\bfrom\s+[\w.]+.*\bimport\s*\(\s*$', line):
+                # Look ahead to see if next line is just ')'
+                if i + 1 < len(lines) and lines[i + 1].strip() == ')':
+                    self.logger.debug(f"Removing empty multi-line import: {line} and {lines[i + 1]}")
+                    i += 2  # Skip both lines
+                    continue
+                else:
+                    # Multi-line import opening without closing ) on next line
+                    # This is likely malformed - mark to skip until next real import/from
+                    self.logger.debug(f"Removing malformed multi-line import start: {line}")
+                    skip_until_next_import = True
+                    i += 1
+                    continue
+
+            # Check for broken/commented import followed by orphaned identifiers
+            if re.match(r'^\s*#\s*from\s+[\w.]+.*\bimport\s*\(', stripped):
+                # Commented-out import opening - skip following identifier lines
+                self.logger.debug(f"Removing commented malformed import: {line}")
+                skip_until_next_import = True
+                i += 1
+                continue
+
+            # If we're in skip mode, skip orphaned identifier lines until we see a real statement
+            if skip_until_next_import:
+                # Skip empty lines and orphaned identifiers
+                if not stripped or re.match(r'^[A-Za-z_]\w*\s*,?\s*$', stripped):
+                    self.logger.debug(f"Removing orphaned identifier (skip mode): {line}")
+                    i += 1
+                    continue
+                else:
+                    # Hit a real statement, exit skip mode
+                    skip_until_next_import = False
+
+            # Check for broken import: from typing import ( followed by from statement
+            if re.search(r'\bfrom\s+[\w.]+.*\bimport\s*\(\s*$', line):
+                # Check if next line starts with another from/import statement (broken)
+                if i + 1 < len(lines) and re.match(r'\s*(from|import)\s+', lines[i + 1]):
+                    self.logger.debug(f"Removing broken incomplete import: {line}")
+                    i += 1
+                    continue
+
+            # Skip orphaned identifier lists (lines with only names, no Python keywords)
+            # These typically appear when LLM tries to list imports but fails the syntax
+            if stripped and not any(keyword in line for keyword in [
+                'def ', 'class ', 'import', 'from', 'if', 'else', 'for', 'while',
+                'try', 'except', 'with', 'return', 'assert', 'raise', '=', ':', '#', '"', "'"
+            ]):
+                # Check if it looks like a standalone identifier list (e.g., "Callable,\nDict,\nList,")
+                # These are typically comma-separated or on separate lines
+                if re.match(r'^[A-Za-z_]\w*\s*,?\s*$', stripped):
+                    # Check context: is this surrounded by other orphan identifiers or comments?
+                    is_orphan = False
+                    # Look back
+                    if cleaned_lines:
+                        last_cleaned = cleaned_lines[-1].strip()
+                        if (re.match(r'^[A-Za-z_]\w*\s*,?\s*$', last_cleaned) or
+                            last_cleaned == '' or
+                            last_cleaned.startswith('#')):
+                            is_orphan = True
+                    # Look ahead
+                    if i + 1 < len(lines):
+                        next_line = lines[i + 1].strip()
+                        if (re.match(r'^[A-Za-z_]\w*\s*,?\s*$', next_line) or
+                            next_line == '' or
+                            next_line.startswith('#')):
+                            is_orphan = True
+
+                    if is_orphan:
+                        self.logger.debug(f"Removing orphaned identifier: {line}")
+                        i += 1
+                        continue
+
+            cleaned_lines.append(line)
+            i += 1
+
+        return '\n'.join(cleaned_lines)

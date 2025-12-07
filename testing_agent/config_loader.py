@@ -76,6 +76,7 @@ class TestingAgentConfig:
     log_level: str
     cover_agent_log_db_path: Path
     config_path: Path
+    repo_yaml_path: Optional[Path] = None
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "TestingAgentConfig":
@@ -101,7 +102,7 @@ class TestingAgentConfig:
         if project_root is None:
             raise FileNotFoundError(
                 "None of the configured project_root_candidates exist: "
-                + ", ".join(project_root_candidates or ["<missing>"])
+                + ", ".join(str(p) for p in project_root_candidates or ["<missing>"])
             )
 
         metadata_folder = Path(raw['metadata_folder'])
@@ -206,6 +207,10 @@ class TestingAgentConfig:
             metadata_folder
         )
 
+        repo_yaml_path = raw.get("repo_yaml_path")
+        if repo_yaml_path:
+            repo_yaml_path = _as_path(repo_yaml_path, config_path.parent)
+
         return cls(
             repo_name=repo_name,
             project_root=project_root,
@@ -237,4 +242,5 @@ class TestingAgentConfig:
             log_level=log_level,
             cover_agent_log_db_path=cover_agent_log_db_path,
             config_path=config_path,
+            repo_yaml_path=repo_yaml_path,
         )

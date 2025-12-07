@@ -17,6 +17,7 @@ from testing_agent.cover_agent.AICaller import AICaller
 from testing_agent.cover_agent.AgentCompletionABC import AgentCompletionABC
 from testing_agent.cover_agent.DefaultAgentCompletion import DefaultAgentCompletion
 from testing_agent.cover_agent.Runner import Runner, LocalRunner
+from testing_agent.cover_agent.ReportGenerator import ReportGenerator
 
 
 class CoverAgent:
@@ -51,6 +52,9 @@ class CoverAgent:
         self.args = args
         self.logger = logging.getLogger(__name__)
         self.command_runner = runner or LocalRunner()
+
+        if self.args.banned_modules is None:
+            self.args.banned_modules = []
 
         self._validate_paths()
         self._duplicate_test_file()
@@ -105,9 +109,17 @@ class CoverAgent:
         # Initialize test generator with configuration
         self.test_gen = UnitTestGenerator(
             source_file_path=args.source_file_path,
-            test_file_path=args.test_file_output_path,
+            test_file_path=(
+                args.eval_test_file_path
+                if getattr(args, "eval_mode", False) and args.eval_test_file_path
+                else args.test_file_output_path
+            ),
             project_root=args.project_root,
-            code_coverage_report_path=args.code_coverage_report_path,
+            code_coverage_report_path=(
+                args.eval_coverage_report_path
+                if getattr(args, "eval_mode", False) and args.eval_coverage_report_path
+                else args.code_coverage_report_path
+            ),
             test_command=args.test_command,
             test_command_dir=args.test_command_dir,
             included_files=args.included_files,
@@ -116,14 +128,24 @@ class CoverAgent:
             llm_model=args.model,
             use_report_coverage_feature_flag=args.use_report_coverage_feature_flag,
             agent_completion=self.agent_completion,
+            banned_modules=args.banned_modules,
+            eval_mode=getattr(args, "eval_mode", False),
         )
 
         # Initialize test validator with configuration
         self.test_validator = UnitTestValidator(
             source_file_path=args.source_file_path,
-            test_file_path=args.test_file_output_path,
+            test_file_path=(
+                args.eval_test_file_path
+                if getattr(args, "eval_mode", False) and args.eval_test_file_path
+                else args.test_file_output_path
+            ),
             project_root=args.project_root,
-            code_coverage_report_path=args.code_coverage_report_path,
+            code_coverage_report_path=(
+                args.eval_coverage_report_path
+                if getattr(args, "eval_mode", False) and args.eval_coverage_report_path
+                else args.code_coverage_report_path
+            ),
             test_command=args.test_command,
             test_command_dir=args.test_command_dir,
             included_files=args.included_files,
@@ -138,7 +160,12 @@ class CoverAgent:
             agent_completion=self.agent_completion,
             max_run_time=args.max_run_time,
             runner=self.command_runner,
+            eval_mode=getattr(args, "eval_mode", False),
         )
+
+        # placeholders for migration coverage
+        self.migration_helper = None
+        self.migration_eval = None
 
     def _validate_paths(self):
         """
